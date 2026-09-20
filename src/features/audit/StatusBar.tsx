@@ -2,6 +2,8 @@ import { useWorkspaceStore } from '@/features/cases/workspaceStore'
 import { Button } from '@/components/ui/button'
 import { formatBytes, truncateHash } from '@/lib/utils/cn'
 import { exportCaseJson, exportCaseMarkdown } from '@/features/export/exportCase'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { useLocale } from '@/lib/i18n'
 
 export function StatusBar({
   onAddEvidence,
@@ -20,15 +22,17 @@ export function StatusBar({
   const setAuditOpen = useWorkspaceStore((s) => s.setAuditOpen)
   const refreshCaseData = useWorkspaceStore((s) => s.refreshCaseData)
   const setMobilePanel = useWorkspaceStore((s) => s.setMobilePanel)
+  const { t } = useLocale()
 
   const selected = evidence.find((e) => e.id === selectedEvidenceIds[0])
   const usageRatio = storageQuota > 0 ? storageUsage / storageQuota : 0
   const storageWarn = usageRatio > 0.8
+  const storageLabel = `${formatBytes(storageUsage)}${storageQuota ? ` / ${formatBytes(storageQuota)}` : ''}`
 
   return (
     <div className="fx-glass flex h-11 shrink-0 items-center gap-2 border-t border-fx-border px-2 text-[11px] md:px-3">
       <Button size="sm" onClick={onAddEvidence} disabled={ingestBusy}>
-        + Add Evidence
+        {t('status.addEvidence')}
       </Button>
       <Button
         size="sm"
@@ -36,7 +40,7 @@ export function StatusBar({
         className="hidden sm:inline-flex"
         onClick={() => setCommandOpen(true)}
       >
-        ⌘K Command
+        {t('status.command')}
       </Button>
       <Button
         size="sm"
@@ -44,7 +48,7 @@ export function StatusBar({
         className="lg:hidden"
         onClick={() => setMobilePanel('cases')}
       >
-        Cases
+        {t('status.cases')}
       </Button>
       <Button
         size="sm"
@@ -52,7 +56,7 @@ export function StatusBar({
         className="lg:hidden"
         onClick={() => setMobilePanel('ai')}
       >
-        AI
+        {t('status.ai')}
       </Button>
 
       <div className="mx-1 hidden h-4 w-px bg-fx-border md:block" />
@@ -62,24 +66,26 @@ export function StatusBar({
         className="font-mono text-fx-muted hover:text-fx-text"
         onClick={() => setAuditOpen(true)}
       >
-        Audit {auditEvents.length}
+        {t('status.audit', { count: auditEvents.length })}
       </button>
 
       <div className="hidden font-mono text-fx-dim md:block">
-        Hash {selected ? truncateHash(selected.sha256) : '—'}
+        {t('status.hash', {
+          hash: selected ? truncateHash(selected.sha256) : '—',
+        })}
       </div>
 
       <div
         className={`hidden font-mono md:block ${storageWarn ? 'text-fx-warn' : 'text-fx-dim'}`}
       >
-        Storage {formatBytes(storageUsage)}
-        {storageQuota ? ` / ${formatBytes(storageQuota)}` : ''}
-        {storageWarn ? ' — approaching limit' : ''}
+        {t('status.storage', { usage: storageLabel })}
+        {storageWarn ? t('status.storageWarn') : ''}
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <LanguageSwitcher className="mr-1" />
         {statusMessage && (
-          <span className="max-w-[240px] truncate text-fx-muted">{statusMessage}</span>
+          <span className="max-w-[200px] truncate text-fx-muted">{statusMessage}</span>
         )}
         <Button
           size="sm"
@@ -90,7 +96,7 @@ export function StatusBar({
             void exportCaseJson(activeCaseId).then(() => refreshCaseData())
           }}
         >
-          JSON
+          {t('status.exportJson')}
         </Button>
         <Button
           size="sm"
@@ -101,7 +107,7 @@ export function StatusBar({
             void exportCaseMarkdown(activeCaseId).then(() => refreshCaseData())
           }}
         >
-          MD
+          {t('status.exportMd')}
         </Button>
       </div>
     </div>

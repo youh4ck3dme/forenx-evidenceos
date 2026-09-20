@@ -1,5 +1,5 @@
 const SETTINGS_KEY = 'forenx.workspace.settings'
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
 
 import type { WorkspaceSettings } from './types'
 import { createId } from '@/lib/utils/cn'
@@ -9,7 +9,7 @@ const defaultSettings = (): WorkspaceSettings => ({
   theme: 'dark',
   activeCaseId: null,
   workspaceId: createId('ws'),
-  workspaceLanguage: 'en',
+  workspaceLanguage: 'sk',
   aiMode: resolveDefaultAiMode(),
   promptOverrides: {},
   enteredSandbox: false,
@@ -33,7 +33,15 @@ export function loadSettings(): WorkspaceSettings {
     }
     const parsed = JSON.parse(raw) as WorkspaceSettings
     if (parsed.schemaVersion !== SCHEMA_VERSION) {
-      const migrated = { ...defaultSettings(), ...parsed, schemaVersion: SCHEMA_VERSION }
+      const migrated: WorkspaceSettings = {
+        ...defaultSettings(),
+        ...parsed,
+        schemaVersion: SCHEMA_VERSION,
+        workspaceLanguage:
+          parsed.workspaceLanguage === 'en' || parsed.workspaceLanguage === 'sk'
+            ? parsed.workspaceLanguage
+            : 'sk',
+      }
       saveSettings(migrated)
       return migrated
     }

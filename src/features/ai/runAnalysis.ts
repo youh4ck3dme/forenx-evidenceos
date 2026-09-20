@@ -14,6 +14,7 @@ import type {
   TimelineEventRecord,
 } from '@/lib/storage/types'
 import { createId } from '@/lib/utils/cn'
+import { loadSettings } from '@/lib/storage/settings'
 import { getAction, type ForensicActionId } from './actions/registry'
 import { resolveAiProvider } from './resolveProvider'
 import type { CaseRecord } from '@/lib/storage/types'
@@ -134,7 +135,7 @@ export async function runForensicAction(
         description: input.caseRecord.description,
       },
       evidenceContext,
-      workspaceLanguage: input.workspaceLanguage ?? 'en',
+      workspaceLanguage: input.workspaceLanguage ?? loadSettings().workspaceLanguage ?? 'sk',
       extraContext: input.extraContext,
     })
 

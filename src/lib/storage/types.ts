@@ -219,6 +219,7 @@ export interface WorkspaceSettings {
   theme: 'dark'
   activeCaseId: string | null
   workspaceId: string
+  /** UI + AI workspace language: sk | en */
   workspaceLanguage: string
   aiMode: 'auto' | 'mock' | 'http'
   promptOverrides: Record<string, string>

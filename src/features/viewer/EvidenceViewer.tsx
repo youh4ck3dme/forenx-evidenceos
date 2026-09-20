@@ -7,6 +7,7 @@ import { sanitizeHtmlToText } from '@/lib/security/evidence'
 import { cn, formatBytes, truncateHash } from '@/lib/utils/cn'
 import { pdfjs } from '@/lib/parsers'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useLocale } from '@/lib/i18n'
 
 marked.setOptions({ breaks: true })
 
@@ -17,6 +18,7 @@ export function EvidenceViewer({
   evidence: EvidenceItem | null
   onDropFiles: (files: FileList) => void
 }) {
+  const { t } = useLocale()
   const [extraction, setExtraction] = useState<ExtractionRecord | null>(null)
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
   const [textContent, setTextContent] = useState<string>('')
@@ -75,7 +77,7 @@ export function EvidenceViewer({
         }
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load evidence')
+          setError(e instanceof Error ? e.message : t('viewer.loadFailed'))
         }
       }
     }
@@ -130,12 +132,9 @@ export function EvidenceViewer({
         }}
       >
         <div className="font-mono text-[11px] tracking-[0.28em] text-fx-accent uppercase">
-          Evidence viewer
+          {t('viewer.title')}
         </div>
-        <p className="mt-3 max-w-md text-sm text-fx-muted">
-          Drag & drop evidence here, or use Add Evidence. Supported: PDF, images,
-          DOCX, RTF, Markdown, text, CSV, JSON, XML, HTML.
-        </p>
+        <p className="mt-3 max-w-md text-sm text-fx-muted">{t('viewer.empty')}</p>
       </div>
     )
   }
@@ -175,7 +174,7 @@ export function EvidenceViewer({
           SHA256 {truncateHash(evidence.sha256)}
         </div>
         <div className="rounded-sm border border-fx-border px-2 py-0.5 font-mono text-[10px] tracking-wider text-fx-ok uppercase">
-          Original / Immutable
+          {t('viewer.originalImmutable')}
         </div>
       </div>
 
@@ -185,7 +184,9 @@ export function EvidenceViewer({
         )}
         {evidence.status === 'QUARANTINED' && (
           <div className="p-4 text-sm text-fx-warn">
-            Quarantined: {evidence.quarantineReason ?? 'unsupported content'}
+            {t('viewer.quarantined', {
+              reason: evidence.quarantineReason ?? 'unsupported',
+            })}
           </div>
         )}
         {!error && isPdf && (
@@ -206,11 +207,11 @@ export function EvidenceViewer({
           <ScrollArea className="h-full p-4">
             {evidence.originalName.toLowerCase().endsWith('.md') ? (
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-fx-text">
-                {mdHtml || textContent || extraction?.text || 'No content'}
+                {mdHtml || textContent || extraction?.text || t('viewer.noContent')}
               </pre>
             ) : (
               <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-fx-muted">
-                {textContent || extraction?.text || 'No extracted text'}
+                {textContent || extraction?.text || t('viewer.noExtractedText')}
               </pre>
             )}
           </ScrollArea>
@@ -226,10 +227,10 @@ export function EvidenceViewer({
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Prev
+              {t('viewer.prev')}
             </button>
             <span>
-              page {page}/{pdfPages.length}
+              {t('viewer.page', { page, total: pdfPages.length })}
             </span>
             <button
               type="button"
@@ -237,15 +238,21 @@ export function EvidenceViewer({
               disabled={page >= pdfPages.length}
               onClick={() => setPage((p) => Math.min(pdfPages.length, p + 1))}
             >
-              Next
+              {t('viewer.next')}
             </button>
           </div>
         )}
-        <span>Section {evidence.sectionOverride ?? evidence.section}</span>
+        <span>
+          {t('viewer.section', {
+            section: evidence.sectionOverride ?? evidence.section,
+          })}
+        </span>
         {extraction?.ocrConfidence != null && (
           <span>OCR {(extraction.ocrConfidence * 100).toFixed(1)}%</span>
         )}
-        {extraction && <span>Extracted via {extraction.processor}</span>}
+        {extraction && (
+          <span>{t('viewer.extractedVia', { processor: extraction.processor })}</span>
+        )}
       </div>
     </div>
   )

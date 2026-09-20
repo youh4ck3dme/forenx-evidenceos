@@ -5,6 +5,7 @@ import { runForensicAction } from '@/features/ai/runAnalysis'
 import { localCaseRepository } from '@/lib/storage/repositories'
 import { exportCaseJson, exportCaseMarkdown } from '@/features/export/exportCase'
 import type { ForensicActionId } from '@/features/ai/actions/registry'
+import { getLocale, useLocale } from '@/lib/i18n'
 
 export function CommandPalette({
   fileInputRef,
@@ -25,16 +26,20 @@ export function CommandPalette({
   const setStatusMessage = useWorkspaceStore((s) => s.setStatusMessage)
   const setLeftTab = useWorkspaceStore((s) => s.setLeftTab)
   const [query, setQuery] = useState('')
+  const { t } = useLocale()
 
   const searchHits = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q || q.startsWith('>')) return []
     const hits: Array<{ id: string; label: string; onSelect: () => void }> = []
     for (const item of evidence) {
-      if (item.originalName.toLowerCase().includes(q) || item.tags.some((t) => t.includes(q))) {
+      if (
+        item.originalName.toLowerCase().includes(q) ||
+        item.tags.some((tag) => tag.includes(q))
+      ) {
         hits.push({
           id: `ev-${item.id}`,
-          label: `Evidence: ${item.originalName}`,
+          label: t('cmd.evidence', { name: item.originalName }),
           onSelect: () => setSelectedEvidence([item.id]),
         })
       }
@@ -46,7 +51,7 @@ export function CommandPalette({
       ) {
         hits.push({
           id: `ent-${entity.id}`,
-          label: `Entity: ${entity.canonicalValue}`,
+          label: t('cmd.entity', { name: entity.canonicalValue }),
           onSelect: () => setLeftTab('entities'),
         })
       }
@@ -55,13 +60,13 @@ export function CommandPalette({
       if (finding.statement.toLowerCase().includes(q)) {
         hits.push({
           id: `find-${finding.id}`,
-          label: `Finding: ${finding.statement.slice(0, 80)}`,
+          label: t('cmd.finding', { text: finding.statement.slice(0, 80) }),
           onSelect: () => setLeftTab('findings'),
         })
       }
     }
     return hits.slice(0, 20)
-  }, [query, evidence, entities, findings, setSelectedEvidence, setLeftTab])
+  }, [query, evidence, entities, findings, setSelectedEvidence, setLeftTab, t])
 
   async function run(actionId: ForensicActionId) {
     if (!activeCaseId) return
@@ -76,10 +81,16 @@ export function CommandPalette({
         selectedEvidenceIds.length > 0
           ? selectedEvidenceIds
           : evidence.map((e) => e.id),
+      workspaceLanguage: getLocale(),
     })
+    if (result.status === 'LIVE' || result.status === 'MOCK' || result.status === 'OFFLINE') {
+      useWorkspaceStore.setState({ aiStatus: result.status })
+    }
     await refreshCaseData()
     setAiBusy(false, result.error ?? null)
-    setStatusMessage(result.error ?? `${actionId} completed`)
+    setStatusMessage(
+      result.error ?? t('ai.completed', { action: actionId, status: result.status }),
+    )
   }
 
   if (!open) return null
@@ -94,7 +105,7 @@ export function CommandPalette({
     >
       <Command
         className="w-[min(560px,92vw)] overflow-hidden rounded-sm border border-fx-border bg-fx-panel shadow-2xl"
-        label="Command palette"
+        label={t('cmd.title')}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') setCommandOpen(false)
@@ -103,35 +114,41 @@ export function CommandPalette({
         <Command.Input
           value={query}
           onValueChange={setQuery}
-          placeholder="Search or run a command…"
+          placeholder={t('cmd.placeholder')}
           className="w-full border-b border-fx-border bg-transparent px-4 py-3 text-sm text-fx-text outline-none placeholder:text-fx-dim"
         />
         <Command.List className="max-h-80 overflow-auto p-2">
           <Command.Empty className="px-2 py-6 text-center text-xs text-fx-dim">
-            No results
+            {t('cmd.empty')}
           </Command.Empty>
-          <Command.Group heading="Commands" className="text-[10px] text-fx-dim">
+          <Command.Group
+            heading={t('cmd.group.commands')}
+            className="text-[10px] text-fx-dim"
+          >
             <Item
-              label="Add evidence"
+              label={t('cmd.addEvidence')}
               onSelect={() => {
                 setCommandOpen(false)
                 fileInputRef.current?.click()
               }}
             />
-            <Item label="Run Auto Triage" onSelect={() => void run('auto_triage')} />
-            <Item label="Extract entities" onSelect={() => void run('entity_extraction')} />
-            <Item label="Generate timeline" onSelect={() => void run('timeline')} />
-            <Item label="Find contradictions" onSelect={() => void run('contradictions')} />
-            <Item label="Generate report" onSelect={() => void run('case_report')} />
+            <Item label={t('cmd.autoTriage')} onSelect={() => void run('auto_triage')} />
+            <Item label={t('cmd.entities')} onSelect={() => void run('entity_extraction')} />
+            <Item label={t('cmd.timeline')} onSelect={() => void run('timeline')} />
             <Item
-              label="Open audit log"
+              label={t('cmd.contradictions')}
+              onSelect={() => void run('contradictions')}
+            />
+            <Item label={t('cmd.report')} onSelect={() => void run('case_report')} />
+            <Item
+              label={t('cmd.audit')}
               onSelect={() => {
                 setCommandOpen(false)
                 setAuditOpen(true)
               }}
             />
             <Item
-              label="Export JSON"
+              label={t('cmd.exportJson')}
               onSelect={() => {
                 if (!activeCaseId) return
                 setCommandOpen(false)
@@ -139,7 +156,7 @@ export function CommandPalette({
               }}
             />
             <Item
-              label="Export Markdown"
+              label={t('cmd.exportMd')}
               onSelect={() => {
                 if (!activeCaseId) return
                 setCommandOpen(false)
@@ -148,7 +165,10 @@ export function CommandPalette({
             />
           </Command.Group>
           {searchHits.length > 0 && (
-            <Command.Group heading="Search" className="mt-2 text-[10px] text-fx-dim">
+            <Command.Group
+              heading={t('cmd.group.search')}
+              className="mt-2 text-[10px] text-fx-dim"
+            >
               {searchHits.map((hit) => (
                 <Item
                   key={hit.id}
@@ -168,7 +188,7 @@ export function CommandPalette({
             className="text-xs text-fx-dim hover:text-fx-text"
             onClick={() => setCommandOpen(false)}
           >
-            Esc
+            {t('cmd.esc')}
           </button>
         </div>
       </Command>

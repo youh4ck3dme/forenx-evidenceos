@@ -92,7 +92,7 @@ export default defineConfig(({ mode }) => {
     mistralApiPlugin(env),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'forenx-icon.png', 'forenx-icon-192.png', 'forenx-icon-512.png'],
       manifest: {
         name: 'ForenX EvidenceOS',
         short_name: 'ForenX',
@@ -106,6 +106,18 @@ export default defineConfig(({ mode }) => {
             src: '/favicon.svg',
             sizes: 'any',
             type: 'image/svg+xml',
+            purpose: 'any',
+          },
+          {
+            src: '/forenx-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/forenx-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any maskable',
           },
         ],

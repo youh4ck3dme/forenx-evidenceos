@@ -1,6 +1,11 @@
 import type { ForensicAction } from './actions/registry'
 
-export type AiConnectionStatus = 'MOCK' | 'LIVE' | 'OFFLINE' | 'UNAVAILABLE'
+export type AiConnectionStatus =
+  | 'IDLE'
+  | 'MOCK'
+  | 'LIVE'
+  | 'OFFLINE'
+  | 'UNAVAILABLE'
 
 export interface AiAnalyzeRequest {
   action: ForensicAction

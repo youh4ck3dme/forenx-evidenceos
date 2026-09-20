@@ -20,8 +20,8 @@ import type {
 } from '@/lib/storage/types'
 import { createId } from '@/lib/utils/cn'
 import { estimateStorage } from '@/lib/storage/opfs'
-import { probeAiStatus } from '@/features/ai/resolveProvider'
 import type { AiConnectionStatus } from '@/features/ai/provider'
+import { probeAiStatus } from '@/features/ai/resolveProvider'
 import { ingestFiles } from '@/features/ingestion/ingest'
 
 interface WorkspaceState {
@@ -79,7 +79,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   timelineEvents: [],
   auditEvents: [],
   aiRuns: [],
-  aiStatus: 'MOCK',
+  aiStatus: 'IDLE',
   aiBusy: false,
   aiError: null,
   storageUsage: 0,
@@ -95,7 +95,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const settings = loadSettings()
     const cases = await localCaseRepository.list()
     const storage = await estimateStorage()
-    const aiStatus = await probeAiStatus()
     set({
       ready: true,
       workspaceId: settings.workspaceId,
@@ -104,7 +103,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       activeCaseId: settings.activeCaseId,
       storageUsage: storage.usage,
       storageQuota: storage.quota,
-      aiStatus,
+      // Do not probe Mistral on init — status stays IDLE until user action
+      aiStatus: typeof navigator !== 'undefined' && !navigator.onLine ? 'OFFLINE' : 'IDLE',
     })
     if (settings.activeCaseId) {
       await get().selectCase(settings.activeCaseId)

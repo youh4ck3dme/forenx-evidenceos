@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn, formatDateTime } from '@/lib/utils/cn'
 import type { EvidenceSection } from '@/lib/storage/types'
+import { useLocale } from '@/lib/i18n'
 
 const SECTION_LABELS: EvidenceSection[] = [
   'IDENTITY',
@@ -33,6 +34,7 @@ export function CaseSidebar() {
   const setSelectedEvidence = useWorkspaceStore((s) => s.setSelectedEvidence)
   const toggleEvidenceSelection = useWorkspaceStore((s) => s.toggleEvidenceSelection)
   const setLeftTab = useWorkspaceStore((s) => s.setLeftTab)
+  const { t } = useLocale()
 
   const activeCase = cases.find((c) => c.id === activeCaseId)
 
@@ -46,23 +48,31 @@ export function CaseSidebar() {
     return map
   }, [evidence])
 
+  const tabs = [
+    ['evidence', t('case.tab.evidence')],
+    ['timeline', t('case.tab.timeline')],
+    ['entities', t('case.tab.entities')],
+    ['findings', t('case.tab.findings')],
+    ['reports', t('case.tab.reports')],
+  ] as const
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-fx-panel">
       <div className="border-b border-fx-border px-3 py-3">
         <div className="flex items-center justify-between gap-2">
           <div>
             <div className="font-mono text-[10px] tracking-[0.22em] text-fx-dim uppercase">
-              Case
+              {t('case.label')}
             </div>
             <div className="mt-1 text-sm font-semibold text-fx-text">
-              {activeCase ? `# ${activeCase.reference}` : 'No case'}
+              {activeCase ? `# ${activeCase.reference}` : t('case.none')}
             </div>
             {activeCase && (
               <div className="truncate text-xs text-fx-muted">{activeCase.name}</div>
             )}
           </div>
           <Button size="sm" variant="secondary" onClick={() => void createCase()}>
-            New
+            {t('case.new')}
           </Button>
         </div>
         {cases.length > 1 && (
@@ -81,15 +91,7 @@ export function CaseSidebar() {
       </div>
 
       <div className="flex border-b border-fx-border text-[10px] font-mono uppercase tracking-wider">
-        {(
-          [
-            ['evidence', 'Evidence'],
-            ['timeline', 'Timeline'],
-            ['entities', 'Entities'],
-            ['findings', 'Findings'],
-            ['reports', 'Reports'],
-          ] as const
-        ).map(([id, label]) => (
+        {tabs.map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -108,7 +110,7 @@ export function CaseSidebar() {
         {leftTab === 'evidence' && (
           <div className="space-y-3">
             <div className="px-1 font-mono text-[10px] text-fx-dim uppercase">
-              Evidence {evidence.length}
+              {t('case.evidenceCount', { count: evidence.length })}
             </div>
             <div className="space-y-0.5 px-1 text-[10px] text-fx-dim">
               {SECTION_LABELS.filter((s) => (bySection.get(s) ?? 0) > 0).map((section) => (
@@ -148,7 +150,7 @@ export function CaseSidebar() {
                 )
               })}
               {!evidence.length && (
-                <p className="px-1 text-xs text-fx-dim">No evidence imported.</p>
+                <p className="px-1 text-xs text-fx-dim">{t('case.noEvidence')}</p>
               )}
             </ul>
           </div>
@@ -161,13 +163,11 @@ export function CaseSidebar() {
                 <div className="font-mono text-[10px] text-fx-accent">
                   {event.timestampOriginal}
                 </div>
-                <div className="text-fx-text">
-                  {event.action || event.eventType}
-                </div>
+                <div className="text-fx-text">{event.action || event.eventType}</div>
               </li>
             ))}
             {!timelineEvents.length && (
-              <p className="text-xs text-fx-dim">No timeline events.</p>
+              <p className="text-xs text-fx-dim">{t('case.noTimeline')}</p>
             )}
           </ul>
         )}
@@ -176,14 +176,12 @@ export function CaseSidebar() {
           <ul className="space-y-2">
             {entities.map((entity) => (
               <li key={entity.id} className="text-xs">
-                <div className="font-mono text-[10px] text-fx-dim">
-                  {entity.entityType}
-                </div>
+                <div className="font-mono text-[10px] text-fx-dim">{entity.entityType}</div>
                 <div className="text-fx-text">{entity.canonicalValue}</div>
               </li>
             ))}
             {!entities.length && (
-              <p className="text-xs text-fx-dim">No entities extracted.</p>
+              <p className="text-xs text-fx-dim">{t('case.noEntities')}</p>
             )}
           </ul>
         )}
@@ -199,17 +197,14 @@ export function CaseSidebar() {
               </li>
             ))}
             {!findings.length && (
-              <p className="text-xs text-fx-dim">No findings yet.</p>
+              <p className="text-xs text-fx-dim">{t('case.noFindings')}</p>
             )}
           </ul>
         )}
 
         {leftTab === 'reports' && (
           <div className="space-y-2 text-xs text-fx-muted">
-            <p>
-              Run <span className="text-fx-text">Case Report</span> from the AI
-              panel to generate a structured report finding.
-            </p>
+            <p>{t('case.reportsHint')}</p>
             {findings
               .filter((f) => f.actionId === 'case_report')
               .map((f) => (

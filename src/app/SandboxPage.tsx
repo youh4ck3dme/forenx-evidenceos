@@ -9,6 +9,8 @@ import { CommandPalette } from '@/features/command-palette/CommandPalette'
 import { localAuditRepository } from '@/lib/storage/repositories'
 import { createId } from '@/lib/utils/cn'
 import { Drawer } from '@/components/ui/drawer'
+import { useLocale } from '@/lib/i18n'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 
 export function SandboxPage() {
   const ready = useWorkspaceStore((s) => s.ready)
@@ -22,8 +24,8 @@ export function SandboxPage() {
   const cases = useWorkspaceStore((s) => s.cases)
   const mobilePanel = useWorkspaceStore((s) => s.mobilePanel)
   const setMobilePanel = useWorkspaceStore((s) => s.setMobilePanel)
-  const refreshAiStatus = useWorkspaceStore((s) => s.refreshAiStatus)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { t } = useLocale()
 
   useEffect(() => {
     if (!ready) void init()
@@ -32,9 +34,12 @@ export function SandboxPage() {
   useEffect(() => {
     if (!ready) return
     if (!activeCaseId && cases.length === 0) {
-      void createCase({ name: 'Sandbox Case', description: 'Local forensic sandbox' })
+      void createCase({
+        name: t('sandbox.caseName'),
+        description: t('sandbox.caseDescription'),
+      })
     }
-  }, [ready, activeCaseId, cases.length, createCase])
+  }, [ready, activeCaseId, cases.length, createCase, t])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -47,18 +52,23 @@ export function SandboxPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [setCommandOpen])
 
+  // Offline flag only — no automatic /api/ai traffic
   useEffect(() => {
-    void refreshAiStatus()
-    const onOnline = () => void refreshAiStatus()
-    window.addEventListener('online', onOnline)
-    window.addEventListener('offline', onOnline)
-    const timer = window.setInterval(() => void refreshAiStatus(), 30_000)
-    return () => {
-      window.removeEventListener('online', onOnline)
-      window.removeEventListener('offline', onOnline)
-      window.clearInterval(timer)
+    const onOffline = () => {
+      useWorkspaceStore.setState({ aiStatus: 'OFFLINE' })
     }
-  }, [refreshAiStatus])
+    const onOnline = () => {
+      useWorkspaceStore.setState((s) =>
+        s.aiStatus === 'OFFLINE' ? { aiStatus: 'IDLE' } : s,
+      )
+    }
+    window.addEventListener('offline', onOffline)
+    window.addEventListener('online', onOnline)
+    return () => {
+      window.removeEventListener('offline', onOffline)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [])
 
   const selected =
     evidence.find((e) => e.id === selectedEvidenceIds[0]) ?? null
@@ -80,7 +90,7 @@ export function SandboxPage() {
   if (!ready) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-fx-bg font-mono text-xs tracking-[0.2em] text-fx-dim uppercase">
-        Initializing local vault…
+        {t('sandbox.initializing')}
       </div>
     )
   }
@@ -122,20 +132,26 @@ export function SandboxPage() {
       <Drawer
         open={mobilePanel === 'cases'}
         onOpenChange={(open) => setMobilePanel(open ? 'cases' : 'none')}
-        title="Cases & Evidence"
+        title={t('sandbox.drawer.cases')}
         side="left"
       >
-        <div className="h-[80dvh]">
+        <div className="mb-3 flex justify-end px-1">
+          <LanguageSwitcher />
+        </div>
+        <div className="h-[75dvh]">
           <CaseSidebar />
         </div>
       </Drawer>
       <Drawer
         open={mobilePanel === 'ai'}
         onOpenChange={(open) => setMobilePanel(open ? 'ai' : 'none')}
-        title="ForenX AI"
+        title={t('sandbox.drawer.ai')}
         side="right"
       >
-        <div className="h-[80dvh]">
+        <div className="mb-3 flex justify-end px-1">
+          <LanguageSwitcher />
+        </div>
+        <div className="h-[75dvh]">
           <AiAnalystPanel />
         </div>
       </Drawer>
