@@ -110,12 +110,6 @@ export default defineConfig(({ mode }) => {
         start_url: '/',
         icons: [
           {
-            src: '/favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any',
-          },
-          {
             src: '/forenx-icon-192.png',
             sizes: '192x192',
             type: 'image/png',
