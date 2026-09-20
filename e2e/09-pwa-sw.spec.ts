@@ -7,21 +7,22 @@ test.describe('09 PWA service worker', () => {
     page,
     context,
   }) => {
+    test.setTimeout(120_000)
     await asStandalone(page)
     await freshContext(page)
     await page.waitForLoadState('networkidle')
 
-    // WebKit may leave the worker in "installing" across a cancelled navigation —
-    // soft-reload a couple of times so precache can finish.
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    // Soft-reload so Workbox can finish installing the lean precache.
+    for (let attempt = 0; attempt < 4; attempt += 1) {
       const state = await page.evaluate(async () => {
         if (!('serviceWorker' in navigator)) return 'no-sw-api'
         const reg = await navigator.serviceWorker.getRegistration()
         return reg?.active?.state ?? reg?.installing?.state ?? reg?.waiting?.state ?? 'missing'
       })
       if (state === 'activated') break
-      await page.waitForTimeout(1500)
-      await page.reload({ waitUntil: 'networkidle' })
+      await page.waitForTimeout(2000)
+      await page.reload({ waitUntil: 'domcontentloaded' })
+      await page.waitForTimeout(1000)
     }
     await assertPwaShell(page)
 

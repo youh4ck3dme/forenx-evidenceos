@@ -52,11 +52,8 @@ test.describe('05 AI confirm matrix', () => {
     await expect(
       page.getByText(/auto_triage completed|completed \(MOCK\)|completed \(LIVE\)|Triage suggests/i).first(),
     ).toBeVisible({ timeout: 20_000 })
-    // Cancel path above proved no network on dismiss; confirm must finish.
-    expect(counters.analyzePosts + counters.ocrPosts).toBeGreaterThanOrEqual(0)
 
     // Full Confirm: OCR & Structure (PNG still selected from last import)
-    const beforeOcr = counters.ocrPosts
     await page
       .getByRole('dialog')
       .getByRole('button', { name: /OCR & Structure/i })
@@ -65,10 +62,6 @@ test.describe('05 AI confirm matrix', () => {
     await expect(page.getByText(/completed|ocr_structure|MOCK OCR|Extracted via/i).first()).toBeVisible({
       timeout: 20_000,
     })
-    // If HTTP OCR ran, counter moves; mock provider still completes the confirm path.
-    if (counters.ocrPosts > beforeOcr) {
-      expect(counters.ocrPosts).toBeGreaterThan(beforeOcr)
-    }
   })
 })
 
