@@ -3,6 +3,8 @@
  * Never expose MISTRAL_API_KEY to the browser.
  */
 
+declare const process: { env: Record<string, string | undefined> }
+
 export const MISTRAL_CHAT_URL = 'https://api.mistral.ai/v1/chat/completions'
 export const MISTRAL_OCR_URL = 'https://api.mistral.ai/v1/ocr'
 

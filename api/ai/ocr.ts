@@ -14,7 +14,7 @@ import {
   RATE_LIMIT_OCR,
   RATE_LIMIT_PROBE,
   readJsonBody,
-} from './_shared'
+} from './_shared.js'
 
 export const config = {
   runtime: 'edge',
@@ -39,7 +39,7 @@ export default async function handler(request: Request): Promise<Response> {
 
   const apiKey = process.env.MISTRAL_API_KEY
   const parsed = await readJsonBody(request, MAX_OCR_BYTES)
-  if (!parsed.ok) return parsed.response
+  if (parsed.ok === false) return parsed.response
 
   const isProbe = parsed.body.probe === true
   const ip = clientIp(request)
