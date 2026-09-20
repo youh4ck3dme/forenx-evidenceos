@@ -46,12 +46,13 @@ test.describe('05 AI confirm matrix', () => {
     ).toBeHidden()
     expect(counters.analyzePosts).toBe(beforeEsc)
 
-    // Full Confirm: Auto Triage
+    // Full Confirm: Auto Triage — finding text may be in a scrolled list (not "visible")
     await dialog.getByRole('button', { name: /Auto Triage/i }).click()
     await page.getByRole('button', { name: /Send to AI/i }).click()
-    await expect(
-      page.getByText(/auto_triage completed|completed \(MOCK\)|completed \(LIVE\)|Triage suggests/i).first(),
-    ).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('dialog')).toContainText(
+      /Triage suggests|auto_triage completed|completed \(MOCK\)|completed \(LIVE\)/i,
+      { timeout: 20_000 },
+    )
 
     // Full Confirm: OCR & Structure (PNG still selected from last import)
     await page
@@ -59,9 +60,10 @@ test.describe('05 AI confirm matrix', () => {
       .getByRole('button', { name: /OCR & Structure/i })
       .click()
     await page.getByRole('button', { name: /Send to AI/i }).click()
-    await expect(page.getByText(/completed|ocr_structure|MOCK OCR|Extracted via/i).first()).toBeVisible({
-      timeout: 20_000,
-    })
+    await expect(page.getByRole('dialog')).toContainText(
+      /ocr_structure|MOCK OCR|completed|Extracted via|mock-ocr/i,
+      { timeout: 20_000 },
+    )
   })
 })
 

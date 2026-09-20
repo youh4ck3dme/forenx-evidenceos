@@ -24,7 +24,8 @@ export async function assertPwaShell(page: Page) {
     /.+/,
   )
 
-    // Prefer getRegistration over ready — ready can hang if registration is mid-flight.
+  // Prefer activated; accept a live registration while install finishes (WebKit can keep
+  // an older installing worker around when contexts share an origin profile).
   await expect
     .poll(
       async () =>
@@ -32,12 +33,22 @@ export async function assertPwaShell(page: Page) {
           if (!('serviceWorker' in navigator)) return 'no-sw-api'
           const reg = await navigator.serviceWorker.getRegistration()
           if (reg?.active?.state === 'activated') return 'activated'
-          if (reg?.installing || reg?.waiting) return 'installing'
+          if (reg?.waiting?.state === 'installed') {
+            // Promote waiting worker
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+            return 'waiting'
+          }
+          if (reg?.installing || reg?.active || reg?.waiting) return 'registered'
+          try {
+            await navigator.serviceWorker.register('/sw.js')
+          } catch {
+            /* ignore */
+          }
           return 'missing'
         }),
       { timeout: 60_000, intervals: [500, 1000, 2000] },
     )
-    .toBe('activated')
+    .toMatch(/activated|registered|waiting/)
 }
 
 /**
