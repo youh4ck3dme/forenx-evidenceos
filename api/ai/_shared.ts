@@ -87,11 +87,17 @@ export function handleProbe(
   )
 }
 
+const ALLOWED_UPSTREAM = new Set([MISTRAL_CHAT_URL, MISTRAL_OCR_URL])
+
 export async function proxyMistral(
   url: string,
   apiKey: string,
   body: Record<string, unknown>,
 ): Promise<Response> {
+  if (!ALLOWED_UPSTREAM.has(url)) {
+    return jsonResponse({ error: 'Upstream not allowed' }, 500)
+  }
+
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 60_000)
   try {
@@ -105,6 +111,7 @@ export async function proxyMistral(
       signal: controller.signal,
     })
     const text = await upstream.text()
+    // Never forward upstream auth headers; body is opaque JSON only.
     return new Response(text, {
       status: upstream.status,
       headers: {

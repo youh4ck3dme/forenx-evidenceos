@@ -18,8 +18,15 @@ export const config = {
 }
 
 export default async function handler(request: Request): Promise<Response> {
+  // Same-origin SPA only — no CORS ACAO headers (browser cross-origin blocked).
   if (request.method === 'OPTIONS') {
-    return jsonResponse({ ok: true }, 204)
+    return new Response(null, {
+      status: 204,
+      headers: {
+        Allow: 'POST',
+        'Cache-Control': 'no-store',
+      },
+    })
   }
   if (request.method !== 'POST') return methodNotAllowed()
 

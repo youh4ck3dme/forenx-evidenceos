@@ -40,15 +40,23 @@ No auth. No production database.
 
 ## Deploy on Vercel (production)
 
-1. Push repo to GitHub/GitLab and **Import** into Vercel.
-2. **Root Directory**: `forenx-evidence-os` (if monorepo) or repo root if this folder is the repo.
-3. Framework preset: Vite (see `vercel.json`).
-4. Build: `npm run build` → Output: `dist`.
-5. **Environment variables** (Project → Settings → Environment Variables):
-   - `MISTRAL_API_KEY` = your secret (Production + Preview as needed)
-   - Do **not** set `VITE_MISTRAL_API_KEY` — never expose the key to the browser.
-6. Deploy.
-7. Strongly recommended without auth: enable **Vercel Deployment Protection** on Preview (and Production if the app is not meant to be a public AI proxy). A public unprotected `/api/ai/*` can be abused on your Mistral quota.
+### Exact UI clicks
+
+1. [vercel.com](https://vercel.com) → **Add New…** → **Project** → **Import** Git repository.
+2. Select the repo. If the app lives in a subfolder, set **Root Directory** → `forenx-evidence-os`.
+3. Framework Preset should detect **Vite** (also defined in `vercel.json`).
+4. Confirm **Build Command** `npm run build` and **Output Directory** `dist`.
+5. **Environment Variables** → Add `MISTRAL_API_KEY` for Production (and Preview if needed).  
+   Do **not** add `VITE_MISTRAL_API_KEY`.
+6. **Deploy**.
+7. Optional but recommended without auth: Project → **Settings** → **Deployment Protection** on Preview (and Production if the app must not be a public AI proxy).
+
+### Checklist after deploy
+
+- [ ] Welcome loads (SK default), Justicia icon + PWA installable
+- [ ] `POST /api/ai/analyze` with `{ "probe": true }` → `{ ok, mode }` (no Mistral call)
+- [ ] Analyze only after user click + confirm dialog
+- [ ] Offline / missing key does not fake success
 
 ### What Vercel serves
 
@@ -59,7 +67,15 @@ No auth. No production database.
 | `POST /api/ai/ocr` | Edge proxy → Mistral OCR |
 | `POST` with `{ "probe": true }` | Status only — no upstream call |
 
-PWA caches the app shell; `/api/*` is **NetworkOnly** (no fake offline AI success).
+PWA caches the app shell; `/api/*` is **NetworkOnly** (no fake offline AI success).  
+Security headers (incl. CSP allowing workers/fonts) are in `vercel.json`.
+
+## Next polish passes (copy-paste prompty)
+
+See [`docs/POLISH_PROMPTS.md`](docs/POLISH_PROMPTS.md) for:
+
+1. **Prompt 1** — product polish (OCR wiring, i18n leftovers, empty states, regression).
+2. **Prompt 2** — Vercel tip-top re-audit / hardening checklist.
 
 ## Security notes
 
