@@ -99,15 +99,33 @@ export default defineConfig(({ mode }) => {
     mistralApiPlugin(env),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'forenx-icon.png', 'forenx-icon-192.png', 'forenx-icon-512.png'],
+      injectRegister: false,
+      includeAssets: [
+        'favicon.ico',
+        'favicon.svg',
+        'forenx-icon.png',
+        'forenx-icon-16.png',
+        'forenx-icon-32.png',
+        'forenx-icon-180.png',
+        'forenx-icon-192.png',
+        'forenx-icon-512.png',
+        'forenx-icon-maskable-512.png',
+      ],
       manifest: {
+        id: '/',
         name: 'ForenX EvidenceOS',
         short_name: 'ForenX',
         description: 'Local-first AI Forensic Workspace',
-        theme_color: '#0a0b0d',
-        background_color: '#0a0b0d',
+        lang: 'sk',
+        dir: 'ltr',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
+        display_override: ['standalone', 'minimal-ui', 'browser'],
+        orientation: 'any',
         start_url: '/',
+        scope: '/',
+        categories: ['productivity', 'utilities'],
         icons: [
           {
             src: '/forenx-icon-192.png',
@@ -119,13 +137,23 @@ export default defineConfig(({ mode }) => {
             src: '/forenx-icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable',
+            purpose: 'any',
+          },
+          {
+            src: '/forenx-icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,woff2}'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
@@ -137,7 +165,23 @@ export default defineConfig(({ mode }) => {
             handler: 'NetworkOnly',
             method: 'GET',
           },
+          {
+            urlPattern: ({ request, url }) =>
+              request.destination === 'image' ||
+              /\.(?:png|svg|ico|jpg|jpeg|webp)$/i.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'forenx-images',
+              expiration: {
+                maxEntries: 64,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
         ],
+      },
+      devOptions: {
+        enabled: false,
       },
     }),
   ],
