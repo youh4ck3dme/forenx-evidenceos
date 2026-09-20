@@ -15,24 +15,41 @@ function mistralApiPlugin(env: Record<string, string>): Plugin {
         if (!req.url?.startsWith('/api/ai/')) return next()
 
         const apiKey = env.MISTRAL_API_KEY || process.env.MISTRAL_API_KEY
-        if (!apiKey) {
-          res.statusCode = 503
-          res.setHeader('Content-Type', 'application/json')
-          res.end(
-            JSON.stringify({
-              error: 'MISTRAL_API_KEY not configured',
-              mode: 'unavailable',
-            }),
-          )
-          return
-        }
 
         try {
           const chunks: Buffer[] = []
           for await (const chunk of req) {
             chunks.push(Buffer.from(chunk))
           }
-          const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
+          const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as {
+            probe?: boolean
+          }
+
+          if (body.probe) {
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify(
+                apiKey
+                  ? { ok: true, mode: 'live' }
+                  : { ok: false, mode: 'unavailable' },
+              ),
+            )
+            return
+          }
+
+          if (!apiKey) {
+            res.statusCode = 503
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify({
+                error: 'MISTRAL_API_KEY not configured',
+                mode: 'unavailable',
+              }),
+            )
+            return
+          }
+
           const isOcr = req.url.includes('/ocr')
 
           const mistralUrl = isOcr

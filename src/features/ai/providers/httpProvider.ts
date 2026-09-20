@@ -13,14 +13,19 @@ export class HttpAiProvider implements AiProvider {
   async getStatus(): Promise<AiConnectionStatus> {
     if (!navigator.onLine) return 'OFFLINE'
     try {
+      const controller = new AbortController()
+      const timer = window.setTimeout(() => controller.abort(), 2500)
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ probe: true }),
+        signal: controller.signal,
       })
-      if (res.status === 503) return 'UNAVAILABLE'
-      // Any response from proxy means the endpoint is reachable
-      return res.ok || res.status === 400 || res.status === 401 ? 'LIVE' : 'UNAVAILABLE'
+      window.clearTimeout(timer)
+      if (!res.ok) return 'UNAVAILABLE'
+      const data = (await res.json()) as { ok?: boolean; mode?: string }
+      if (data.ok && data.mode === 'live') return 'LIVE'
+      return 'UNAVAILABLE'
     } catch {
       return navigator.onLine ? 'UNAVAILABLE' : 'OFFLINE'
     }

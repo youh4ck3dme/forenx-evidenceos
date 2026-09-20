@@ -85,10 +85,20 @@ export function CommandPalette({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]"
+      onClick={() => setCommandOpen(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') setCommandOpen(false)
+      }}
+    >
       <Command
         className="w-[min(560px,92vw)] overflow-hidden rounded-sm border border-fx-border bg-fx-panel shadow-2xl"
         label="Command palette"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setCommandOpen(false)
+        }}
       >
         <Command.Input
           value={query}
