@@ -11,7 +11,9 @@
     "smoke": "node scripts/smoke.mjs",
     "test:guards": "node --experimental-strip-types scripts/test-abuse-guards.mjs",
     "smoke:live": "node scripts/live-smoke.mjs",
-    "test:e2e": "node scripts/regression.mjs"
+    "test:e2e": "node scripts/regression.mjs",
+    "test:e2e:pwa": "playwright test --project=iphone-14-plus-pwa",
+    "test:e2e:all": "npm run test:guards && npm run test:e2e && npm run test:e2e:pwa"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
@@ -38,6 +40,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.6",
     "@types/react": "^19.2.18",

@@ -1,0 +1,7 @@
+INVOICE #INV-2024-0042
+From: finance@acme.example
+To: accounts@contoso.example
+Date: 2024-03-15
+Amount due: EUR 12,450.00
+IBAN: SK31 1200 0000 1987 4263 7541
+Please remit payment within 30 days.
