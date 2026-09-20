@@ -149,6 +149,8 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2}'],
+        // Keep the installable shell lean — large lazy parsers are fetched on demand.
+        globIgnores: ['**/heic2any*', '**/pdf.worker*'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
