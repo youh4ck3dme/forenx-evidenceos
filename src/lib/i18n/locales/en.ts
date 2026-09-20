@@ -65,6 +65,18 @@ export const en = {
   'ai.completed': '{action} completed ({status})',
   'ai.failed': 'Analysis failed',
   'ai.idleHint': 'Status updates only after Refresh or an analysis action.',
+  'ai.error.offline': 'Offline — AI actions unavailable',
+  'ai.error.offlineLocal':
+    'Offline — AI actions unavailable. Evidence remains local.',
+  'ai.error.unreachable': 'Cannot reach AI proxy',
+  'ai.error.noKey': 'AI proxy unavailable (no API key)',
+  'ai.error.ocrFailed': 'OCR request failed',
+  'ai.error.ocrEmpty': 'OCR returned no text',
+  'ai.error.analyzeFailed': 'AI analyze failed',
+  'ai.error.generic': 'Analysis failed',
+  'ai.completedGeneric': '{action} completed',
+  'ai.busyLabel': 'AI working…',
+  'ai.offlineChip': 'OFFLINE',
 
   'action.auto_triage.name': 'Auto Triage',
   'action.auto_triage.desc':
@@ -154,4 +166,29 @@ export const en = {
   'confirm.ai.body':
     'Selected evidence text will be sent to the Mistral analysis service via the server proxy. Originals stay local and immutable. Cancel to abort with no network call.',
   'status.storageNearLimit': 'Browser storage is nearly full. Export or remove evidence.',
+  'status.importing': 'Importing evidence…',
+  'status.imported': 'Imported {count} item(s)',
+  'status.selected': 'Selected {name}',
+  'status.ingestBusy': 'Importing…',
+
+  'case.defaultName': 'Case FX-{seq}',
+  'audit.caseCreated': 'Case {reference} created',
+  'audit.imported': 'Imported {name}',
+  'audit.hashed': 'SHA-256 computed for {name}',
+  'audit.extractionCreated': 'Extraction created for {name}',
+  'audit.ocrDerived': 'OCR-derived extraction created for {name}',
+  'audit.aiStarted': '{action} started ({status})',
+  'audit.aiCompleted': '{action} completed ({status})',
+  'audit.aiFailed': '{action} failed: {reason}',
+  'audit.exportedJson': 'Exported case as JSON',
+  'audit.exportedMd': 'Exported case as Markdown',
+
+  'quarantine.mz': 'Windows executable (MZ)',
+  'quarantine.elf': 'ELF executable',
+  'quarantine.macho': 'Mach-O / Java class',
+  'quarantine.unknown': 'Unsupported or unknown format',
+  'quarantine.normalizeFailed': 'Normalization failed',
+
+  'viewer.loading': 'Loading evidence…',
+  'viewer.ocrConfidence': 'OCR {pct}%',
 } as const

@@ -13,6 +13,7 @@ import type {
 import { createId } from '@/lib/utils/cn'
 import { extractContent } from '@/lib/parsers'
 import { normalizeImageToPng, parseRtfToText } from '@/lib/parsers/normalize'
+import { t } from '@/lib/i18n'
 import { detectFormat, getExtension } from './formatRegistry'
 
 export interface IngestResult {
@@ -58,7 +59,7 @@ async function ingestOne(
     workspaceId: opts.workspaceId,
     type: 'EVIDENCE_IMPORTED',
     createdAt: importedAt,
-    message: `Imported ${file.name}`,
+    message: t('audit.imported', { name: file.name }),
     meta: {
       evidenceId,
       byteSize: file.size,
@@ -73,7 +74,7 @@ async function ingestOne(
     workspaceId: opts.workspaceId,
     type: 'EVIDENCE_HASHED',
     createdAt: new Date().toISOString(),
-    message: `SHA-256 computed for ${file.name}`,
+    message: t('audit.hashed', { name: file.name }),
     meta: { evidenceId, sha256: hash },
   })
 
@@ -104,7 +105,7 @@ async function ingestOne(
     } catch (error) {
       status = 'QUARANTINED'
       quarantineReason =
-        error instanceof Error ? error.message : 'Normalization failed'
+        error instanceof Error ? error.message : t('quarantine.normalizeFailed')
     }
   }
 
@@ -165,7 +166,7 @@ async function ingestOne(
         workspaceId: opts.workspaceId,
         type: 'EXTRACTION_CREATED',
         createdAt: new Date().toISOString(),
-        message: `Extraction created for ${file.name}`,
+        message: t('audit.extractionCreated', { name: file.name }),
         meta: { evidenceId, extractionId: extraction.id },
       })
     } catch (error) {

@@ -67,6 +67,18 @@ export const sk: Messages = {
   'ai.completed': '{action} dokončené ({status})',
   'ai.failed': 'Analýza zlyhala',
   'ai.idleHint': 'Status sa aktualizuje až po Obnovení alebo analytickej akcii.',
+  'ai.error.offline': 'Offline — AI akcie nie sú dostupné',
+  'ai.error.offlineLocal':
+    'Offline — AI akcie nie sú dostupné. Dôkazy zostávajú lokálne.',
+  'ai.error.unreachable': 'AI proxy nie je dosiahnuteľné',
+  'ai.error.noKey': 'AI proxy nedostupné (chýba API kľúč)',
+  'ai.error.ocrFailed': 'OCR požiadavka zlyhala',
+  'ai.error.ocrEmpty': 'OCR nevrátilo text',
+  'ai.error.analyzeFailed': 'AI analýza zlyhala',
+  'ai.error.generic': 'Analýza zlyhala',
+  'ai.completedGeneric': '{action} dokončené',
+  'ai.busyLabel': 'AI pracuje…',
+  'ai.offlineChip': 'OFFLINE',
 
   'action.auto_triage.name': 'Auto triáž',
   'action.auto_triage.desc':
@@ -155,5 +167,31 @@ export const sk: Messages = {
   'confirm.ai.title': 'Odoslať dôkaz do AI?',
   'confirm.ai.body':
     'Text vybraného dôkazu sa odošle cez serverový proxy do Mistral analýzy. Originály zostávajú lokálne a nemenné. Zrušením sa nič neodošle.',
-  'status.storageNearLimit': 'Úložisko prehliadača je takmer plné. Exportujte alebo odstráňte dôkazy.',
+  'status.storageNearLimit':
+    'Úložisko prehliadača je takmer plné. Exportujte alebo odstráňte dôkazy.',
+  'status.importing': 'Importujem dôkazy…',
+  'status.imported': 'Importované: {count}',
+  'status.selected': 'Vybrané: {name}',
+  'status.ingestBusy': 'Import…',
+
+  'case.defaultName': 'Prípad FX-{seq}',
+  'audit.caseCreated': 'Prípad {reference} vytvorený',
+  'audit.imported': 'Importované {name}',
+  'audit.hashed': 'SHA-256 vypočítané pre {name}',
+  'audit.extractionCreated': 'Extrakcia vytvorená pre {name}',
+  'audit.ocrDerived': 'OCR odvodená extrakcia vytvorená pre {name}',
+  'audit.aiStarted': '{action} spustené ({status})',
+  'audit.aiCompleted': '{action} dokončené ({status})',
+  'audit.aiFailed': '{action} zlyhalo: {reason}',
+  'audit.exportedJson': 'Prípad exportovaný ako JSON',
+  'audit.exportedMd': 'Prípad exportovaný ako Markdown',
+
+  'quarantine.mz': 'Windows spustiteľný súbor (MZ)',
+  'quarantine.elf': 'ELF spustiteľný súbor',
+  'quarantine.macho': 'Mach-O / Java class',
+  'quarantine.unknown': 'Nepodporovaný alebo neznámy formát',
+  'quarantine.normalizeFailed': 'Normalizácia zlyhala',
+
+  'viewer.loading': 'Načítavam dôkaz…',
+  'viewer.ocrConfidence': 'OCR {pct}%',
 }

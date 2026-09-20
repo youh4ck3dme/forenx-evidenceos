@@ -19,6 +19,7 @@ export function StatusBar({
   const statusMessage = useWorkspaceStore((s) => s.statusMessage)
   const ingestBusy = useWorkspaceStore((s) => s.ingestBusy)
   const activeCaseId = useWorkspaceStore((s) => s.activeCaseId)
+  const aiStatus = useWorkspaceStore((s) => s.aiStatus)
   const setCommandOpen = useWorkspaceStore((s) => s.setCommandOpen)
   const setAuditOpen = useWorkspaceStore((s) => s.setAuditOpen)
   const refreshCaseData = useWorkspaceStore((s) => s.refreshCaseData)
@@ -70,19 +71,31 @@ export function StatusBar({
         {t('status.audit', { count: auditEvents.length })}
       </button>
 
-      <div className="hidden font-mono text-fx-dim md:block">
+      <div className="hidden font-mono md:block">
         {t('status.hash', {
           hash: selected ? truncateHash(selected.sha256) : '—',
         })}
       </div>
 
       <div
-        className={`hidden font-mono md:block ${storageWarn ? 'text-fx-warn' : 'text-fx-dim'}`}
+        className={`font-mono text-[11px] ${storageWarn ? 'text-fx-warn' : 'text-fx-dim'}`}
         title={storageWarn ? t('status.storageNearLimit') : undefined}
       >
         {t('status.storage', { usage: storageLabel })}
         {storageWarn ? t('status.storageWarn') : ''}
       </div>
+
+      {ingestBusy && (
+        <div className="font-mono text-[11px] text-fx-accent uppercase">
+          {t('status.ingestBusy')}
+        </div>
+      )}
+
+      {aiStatus === 'OFFLINE' && (
+        <div className="font-mono text-[11px] tracking-wider text-fx-danger uppercase">
+          {t('ai.offlineChip')}
+        </div>
+      )}
 
       <div className="ml-auto flex items-center gap-2">
         <ThemeSwitcher className="mr-1 hidden sm:inline-flex" />

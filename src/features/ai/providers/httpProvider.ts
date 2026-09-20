@@ -3,6 +3,8 @@ import type {
   AiAnalyzeRequest,
   AiAnalyzeResponse,
   AiConnectionStatus,
+  AiOcrRequest,
+  AiOcrResponse,
   AiProvider,
 } from '../provider'
 import { wrapEvidenceAsUntrusted } from '@/lib/security/evidence'
@@ -31,10 +33,99 @@ export class HttpAiProvider implements AiProvider {
     }
   }
 
+  async ocr(request: AiOcrRequest): Promise<AiOcrResponse> {
+    if (!navigator.onLine) {
+      throw Object.assign(new Error('ai.error.offline'), {
+        status: 'OFFLINE' as const,
+        i18nKey: 'ai.error.offline',
+      })
+    }
+
+    const dataUrl =
+      request.kind === 'image'
+        ? `data:${request.mime || 'image/png'};base64,${request.base64}`
+        : `data:application/pdf;base64,${request.base64}`
+
+    const body =
+      request.kind === 'image'
+        ? {
+            model: 'mistral-ocr-latest',
+            document: {
+              type: 'image_url',
+              image_url: dataUrl,
+            },
+          }
+        : {
+            model: 'mistral-ocr-latest',
+            document: {
+              type: 'document_url',
+              document_url: dataUrl,
+            },
+          }
+
+    let res: Response
+    try {
+      res = await fetch('/api/ai/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+    } catch {
+      throw Object.assign(new Error('ai.error.unreachable'), {
+        status: 'OFFLINE' as const,
+        i18nKey: 'ai.error.unreachable',
+      })
+    }
+
+    if (res.status === 503) {
+      throw Object.assign(new Error('ai.error.noKey'), {
+        status: 'UNAVAILABLE' as const,
+        i18nKey: 'ai.error.noKey',
+      })
+    }
+
+    if (!res.ok) {
+      const errText = await res.text()
+      throw Object.assign(
+        new Error(`ai.error.ocrFailed:${res.status}:${errText.slice(0, 200)}`),
+        { i18nKey: 'ai.error.ocrFailed', statusCode: res.status },
+      )
+    }
+
+    const data = (await res.json()) as {
+      pages?: Array<{ markdown?: string; text?: string }>
+      model?: string
+    }
+    const pages = data.pages ?? []
+    const text = pages
+      .map((p) => p.markdown ?? p.text ?? '')
+      .filter(Boolean)
+      .join('\n\n')
+      .trim()
+
+    if (!text) {
+      throw Object.assign(new Error('ai.error.ocrEmpty'), {
+        i18nKey: 'ai.error.ocrEmpty',
+        status: 'FAILED' as const,
+      })
+    }
+
+    return {
+      status: 'LIVE',
+      model: data.model ?? 'mistral-ocr-latest',
+      modelVersion: data.model ?? 'mistral-ocr-latest',
+      text,
+      pageCount: pages.length || undefined,
+      ocrConfidence: 0.85,
+      raw: data,
+    }
+  }
+
   async analyze(request: AiAnalyzeRequest): Promise<AiAnalyzeResponse> {
     if (!navigator.onLine) {
-      throw Object.assign(new Error('Offline — AI actions unavailable'), {
+      throw Object.assign(new Error('ai.error.offline'), {
         status: 'OFFLINE' as const,
+        i18nKey: 'ai.error.offline',
       })
     }
 
@@ -100,20 +191,25 @@ export class HttpAiProvider implements AiProvider {
         body: JSON.stringify(body),
       })
     } catch {
-      throw Object.assign(new Error('Cannot reach AI proxy'), {
+      throw Object.assign(new Error('ai.error.unreachable'), {
         status: 'OFFLINE' as const,
+        i18nKey: 'ai.error.unreachable',
       })
     }
 
     if (res.status === 503) {
-      throw Object.assign(new Error('AI proxy unavailable (no API key)'), {
+      throw Object.assign(new Error('ai.error.noKey'), {
         status: 'UNAVAILABLE' as const,
+        i18nKey: 'ai.error.noKey',
       })
     }
 
     if (!res.ok) {
       const errText = await res.text()
-      throw new Error(`AI analyze failed (${res.status}): ${errText.slice(0, 400)}`)
+      throw Object.assign(
+        new Error(`ai.error.analyzeFailed:${res.status}:${errText.slice(0, 200)}`),
+        { i18nKey: 'ai.error.analyzeFailed', statusCode: res.status },
+      )
     }
 
     const data = (await res.json()) as {
@@ -125,7 +221,12 @@ export class HttpAiProvider implements AiProvider {
     try {
       parsed = JSON.parse(content) as Record<string, unknown>
     } catch {
-      parsed = { statement: content, epistemicClass: 'UNKNOWN', confidence: 0.2, sourceReferences: [] }
+      parsed = {
+        statement: content,
+        epistemicClass: 'UNKNOWN',
+        confidence: 0.2,
+        sourceReferences: [],
+      }
     }
 
     const validated = request.action.outputSchema.safeParse(parsed)

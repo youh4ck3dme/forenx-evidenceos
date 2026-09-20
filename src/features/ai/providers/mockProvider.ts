@@ -1,11 +1,13 @@
-import { FORENX_CORE_SYSTEM_PROMPT } from '../prompts/core'
 import type {
   AiAnalyzeRequest,
   AiAnalyzeResponse,
   AiConnectionStatus,
+  AiOcrRequest,
+  AiOcrResponse,
   AiProvider,
 } from '../provider'
 import { wrapEvidenceAsUntrusted } from '@/lib/security/evidence'
+import { FORENX_CORE_SYSTEM_PROMPT } from '../prompts/core'
 
 function mockPayload(request: AiAnalyzeRequest): Record<string, unknown> {
   const evidence = request.evidenceContext[0]
@@ -143,6 +145,24 @@ export class MockAiProvider implements AiProvider {
 
   async getStatus(): Promise<AiConnectionStatus> {
     return 'MOCK'
+  }
+
+  async ocr(request: AiOcrRequest): Promise<AiOcrResponse> {
+    await new Promise((r) => setTimeout(r, 200))
+    // Honest mock: derived placeholder text, clearly labeled — not LIVE OCR.
+    return {
+      status: 'MOCK',
+      model: 'forenx-mock-ocr',
+      modelVersion: '0.1.0',
+      text: [
+        `[MOCK OCR] ${request.fileName}`,
+        'No remote Document AI call was made.',
+        'Replace with LIVE Mistral OCR when MISTRAL_API_KEY is configured.',
+        `Kind=${request.kind} bytes≈${Math.round((request.base64.length * 3) / 4)}`,
+      ].join('\n'),
+      pageCount: 1,
+      ocrConfidence: 0.2,
+    }
   }
 
   async analyze(request: AiAnalyzeRequest): Promise<AiAnalyzeResponse> {

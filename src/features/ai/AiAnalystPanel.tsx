@@ -113,6 +113,11 @@ export function AiAnalystPanel() {
           </div>
         </div>
         {aiError && <p className="mt-2 text-xs text-fx-danger">{aiError}</p>}
+        {aiBusy && (
+          <p className="mt-2 font-mono text-[10px] tracking-wider text-fx-accent uppercase">
+            {t('ai.busyLabel')}
+          </p>
+        )}
         <p className="mt-2 text-[11px] text-fx-dim">{t('ai.untrusted')}</p>
         {aiStatus === 'IDLE' && (
           <p className="mt-1 text-[10px] text-fx-dim">{t('ai.idleHint')}</p>

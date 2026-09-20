@@ -8,6 +8,7 @@ import {
 } from '@/lib/storage/repositories'
 import { createId, downloadText, formatDateTime } from '@/lib/utils/cn'
 import { writeEvidenceBlob } from '@/lib/storage/opfs'
+import { t } from '@/lib/i18n'
 
 export async function exportCaseJson(caseId: string): Promise<void> {
   const payload = await buildExportPayload(caseId)
@@ -51,7 +52,8 @@ async function persistExport(
     workspaceId,
     type: 'EXPORT_CREATED',
     createdAt: new Date().toISOString(),
-    message: `Exported case as ${ext.toUpperCase()}`,
+    message:
+      ext === 'json' ? t('audit.exportedJson') : t('audit.exportedMd'),
   })
 }
 

@@ -82,7 +82,7 @@ export function SandboxPage() {
       workspaceId,
       type: 'EVIDENCE_SELECTED',
       createdAt: new Date().toISOString(),
-      message: `Selected ${selected.originalName}`,
+      message: t('status.selected', { name: selected.originalName }),
       meta: { evidenceId: selected.id },
     })
   }, [selected?.id, activeCaseId, selected?.originalName])

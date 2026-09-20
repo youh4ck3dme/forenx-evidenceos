@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n'
 export interface FormatDefinition {
   id: string
   extensions: string[]
@@ -7,6 +8,7 @@ export interface FormatDefinition {
   normalizeTo?: 'png' | 'text'
   category: 'document' | 'image' | 'text' | 'data' | 'unknown'
 }
+
 
 export const MVP_FORMATS: FormatDefinition[] = [
   {
@@ -129,10 +131,13 @@ export const MVP_FORMATS: FormatDefinition[] = [
   },
 ]
 
-const EXECUTABLE_SIGNATURES: Array<{ bytes: number[]; reason: string }> = [
-  { bytes: [0x4d, 0x5a], reason: 'Windows executable (MZ)' },
-  { bytes: [0x7f, 0x45, 0x4c, 0x46], reason: 'ELF executable' },
-  { bytes: [0xca, 0xfe, 0xba, 0xbe], reason: 'Mach-O / Java class' },
+const EXECUTABLE_SIGNATURES: Array<{
+  bytes: number[]
+  reasonKey: 'quarantine.mz' | 'quarantine.elf' | 'quarantine.macho'
+}> = [
+  { bytes: [0x4d, 0x5a], reasonKey: 'quarantine.mz' },
+  { bytes: [0x7f, 0x45, 0x4c, 0x46], reasonKey: 'quarantine.elf' },
+  { bytes: [0xca, 0xfe, 0xba, 0xbe], reasonKey: 'quarantine.macho' },
 ]
 
 function matchesSignature(
@@ -169,7 +174,7 @@ export async function detectFormat(file: File): Promise<DetectionResult> {
         format: null,
         detectedMime: 'application/octet-stream',
         route: 'QUARANTINE',
-        quarantineReason: exe.reason,
+        quarantineReason: t(exe.reasonKey),
       }
     }
   }
@@ -240,6 +245,6 @@ export async function detectFormat(file: File): Promise<DetectionResult> {
     format: null,
     detectedMime: file.type || 'application/octet-stream',
     route: 'QUARANTINE',
-    quarantineReason: 'Unsupported or unknown format',
+    quarantineReason: t('quarantine.unknown'),
   }
 }

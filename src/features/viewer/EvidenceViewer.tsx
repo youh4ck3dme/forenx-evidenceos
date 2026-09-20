@@ -26,6 +26,7 @@ export function EvidenceViewer({
   const [page, setPage] = useState(1)
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -34,12 +35,14 @@ export function EvidenceViewer({
 
     async function load() {
       setError(null)
+      setLoading(Boolean(evidence))
       setPdfPages([])
       setTextContent('')
       setExtraction(null)
       setPage(1)
       if (!evidence) {
         setObjectUrl(null)
+        setLoading(false)
         return
       }
 
@@ -79,6 +82,8 @@ export function EvidenceViewer({
         if (!cancelled) {
           setError(e instanceof Error ? e.message : t('viewer.loadFailed'))
         }
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }
 
@@ -87,7 +92,7 @@ export function EvidenceViewer({
       cancelled = true
       if (revoked) URL.revokeObjectURL(revoked)
     }
-  }, [evidence])
+  }, [evidence, t])
 
   useEffect(() => {
     async function renderPdfPage() {
@@ -167,7 +172,9 @@ export function EvidenceViewer({
           <div className="mt-0.5 font-mono text-[10px] tracking-wide text-fx-dim uppercase">
             {evidence.detectedMime} · {formatBytes(evidence.byteSize)} ·{' '}
             {evidence.status}
-            {evidence.quarantineReason ? ` · ${evidence.quarantineReason}` : ''}
+            {evidence.quarantineReason
+              ? ` · ${t('viewer.quarantined', { reason: evidence.quarantineReason })}`
+              : ''}
           </div>
         </div>
         <div className="font-mono text-[10px] text-fx-muted">
@@ -179,22 +186,27 @@ export function EvidenceViewer({
       </div>
 
       <div className="min-h-0 flex-1">
+        {loading && (
+          <div className="p-4 font-mono text-[11px] tracking-wider text-fx-dim uppercase">
+            {t('viewer.loading')}
+          </div>
+        )}
         {error && (
           <div className="p-4 text-sm text-fx-danger">{error}</div>
         )}
         {evidence.status === 'QUARANTINED' && (
           <div className="p-4 text-sm text-fx-warn">
             {t('viewer.quarantined', {
-              reason: evidence.quarantineReason ?? 'unsupported',
+              reason: evidence.quarantineReason ?? t('quarantine.unknown'),
             })}
           </div>
         )}
-        {!error && isPdf && (
+        {!loading && !error && isPdf && (
           <ScrollArea className="h-full p-4">
             <canvas ref={canvasRef} className="mx-auto max-w-full bg-white shadow-lg" />
           </ScrollArea>
         )}
-        {!error && isImage && objectUrl && (
+        {!loading && !error && isImage && objectUrl && (
           <ScrollArea className="h-full p-4">
             <img
               src={objectUrl}
@@ -203,7 +215,7 @@ export function EvidenceViewer({
             />
           </ScrollArea>
         )}
-        {!error && !isPdf && !isImage && (
+        {!loading && !error && !isPdf && !isImage && (
           <ScrollArea className="h-full p-4">
             {evidence.originalName.toLowerCase().endsWith('.md') ? (
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-fx-text">
@@ -248,7 +260,11 @@ export function EvidenceViewer({
           })}
         </span>
         {extraction?.ocrConfidence != null && (
-          <span>OCR {(extraction.ocrConfidence * 100).toFixed(1)}%</span>
+          <span>
+            {t('viewer.ocrConfidence', {
+              pct: (extraction.ocrConfidence * 100).toFixed(1),
+            })}
+          </span>
         )}
         {extraction && (
           <span>{t('viewer.extractedVia', { processor: extraction.processor })}</span>

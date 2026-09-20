@@ -9,14 +9,19 @@ import {
 } from '@/lib/storage/repositories'
 import type {
   EntityRecord,
+  EvidenceItem,
   EvidenceSection,
+  ExtractionRecord,
   FindingRecord,
   TimelineEventRecord,
 } from '@/lib/storage/types'
 import { createId } from '@/lib/utils/cn'
 import { loadSettings } from '@/lib/storage/settings'
+import { readEvidenceBlob } from '@/lib/storage/opfs'
+import { t } from '@/lib/i18n'
 import { getAction, type ForensicActionId } from './actions/registry'
 import { resolveAiProvider } from './resolveProvider'
+import type { AiProvider } from './provider'
 import type { CaseRecord } from '@/lib/storage/types'
 
 export interface RunAnalysisInput {
@@ -35,12 +40,132 @@ export interface RunAnalysisResult {
   error?: string
 }
 
+function actionLabel(actionId: string, fallback: string): string {
+  const key = `action.${actionId}.name` as Parameters<typeof t>[0]
+  const translated = t(key)
+  return translated === key ? fallback : translated
+}
+
+function mapAiError(error: unknown): string {
+  if (!error || typeof error !== 'object') {
+    return t('ai.error.generic')
+  }
+  const withKey = error as { i18nKey?: string; message?: string }
+  if (withKey.i18nKey) {
+    const key = withKey.i18nKey as Parameters<typeof t>[0]
+    const msg = t(key)
+    if (msg !== key) return msg
+  }
+  if (withKey.message?.startsWith('ai.error.')) {
+    const key = withKey.message.split(':')[0] as Parameters<typeof t>[0]
+    const msg = t(key)
+    if (msg !== key) return msg
+  }
+  return withKey.message ?? t('ai.error.generic')
+}
+
+function needsOcr(
+  evidence: EvidenceItem,
+  text: string,
+  processor?: string,
+): 'image' | 'pdf' | false {
+  const name = evidence.originalName
+  const mime = evidence.detectedMime || evidence.mime
+  const isImage =
+    mime.startsWith('image/') || /\.(png|jpe?g|webp|heic|avif)$/i.test(name)
+  const isPdf = mime === 'application/pdf' || /\.pdf$/i.test(name)
+  const stub =
+    processor === 'image-stub' || /No OCR text extracted/i.test(text)
+  if (isImage && (stub || text.trim().length < 40)) return 'image'
+  if (isPdf && text.trim().length < 40) return 'pdf'
+  return false
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
+}
+
+async function maybeRunOcr(opts: {
+  provider: AiProvider
+  actionId: ForensicActionId
+  evidence: EvidenceItem
+  extraction: ExtractionRecord | undefined
+  caseRecord: CaseRecord
+}): Promise<ExtractionRecord | undefined> {
+  if (opts.actionId !== 'ocr_structure') return opts.extraction
+
+  const kind = needsOcr(
+    opts.evidence,
+    opts.extraction?.text ?? '',
+    opts.extraction?.processor,
+  )
+  if (!kind) return opts.extraction
+
+  const blob = await readEvidenceBlob(opts.evidence.storagePath)
+  const base64 = await blobToBase64(blob)
+  const ocr = await opts.provider.ocr({
+    fileName: opts.evidence.originalName,
+    mime: opts.evidence.detectedMime || opts.evidence.mime,
+    base64,
+    kind,
+  })
+
+  const extraction: ExtractionRecord = {
+    id: createId('ex'),
+    caseId: opts.caseRecord.id,
+    evidenceId: opts.evidence.id,
+    text: ocr.text,
+    pageCount: ocr.pageCount,
+    languageHints: [],
+    structured: { ocrSource: ocr.status, kind },
+    ocrConfidence: ocr.ocrConfidence,
+    createdAt: new Date().toISOString(),
+    processor: ocr.status === 'LIVE' ? 'mistral-ocr' : 'mock-ocr',
+    processorVersion: ocr.modelVersion,
+    aiModel: ocr.model,
+    source: 'ocr',
+    derivedFrom: opts.evidence.id,
+    confidence: ocr.ocrConfidence,
+  }
+
+  await localExtractionRepository.put(extraction)
+  await localEvidenceRepository.update(opts.evidence.id, {
+    extractionId: extraction.id,
+    status: 'EXTRACTED',
+  })
+
+  await localAuditRepository.append({
+    id: createId('audit'),
+    caseId: opts.caseRecord.id,
+    workspaceId: opts.caseRecord.workspaceId,
+    type: 'EXTRACTION_CREATED',
+    createdAt: new Date().toISOString(),
+    message: t('audit.ocrDerived', { name: opts.evidence.originalName }),
+    meta: {
+      evidenceId: opts.evidence.id,
+      extractionId: extraction.id,
+      processor: extraction.processor,
+      ocrStatus: ocr.status,
+    },
+  })
+
+  return extraction
+}
+
 export async function runForensicAction(
   input: RunAnalysisInput,
 ): Promise<RunAnalysisResult> {
   const action = getAction(input.actionId)
   if (!action) throw new Error(`Unknown action: ${input.actionId}`)
 
+  const label = actionLabel(action.id, action.name)
   const { provider, status } = await resolveAiProvider()
   const runId = createId('run')
   const startedAt = new Date().toISOString()
@@ -58,7 +183,7 @@ export async function runForensicAction(
       modelVersion: 'none',
       startedAt,
       completedAt: new Date().toISOString(),
-      error: 'Offline — AI actions unavailable',
+      error: t('ai.error.offline'),
       resultFindingIds: [],
     })
     await localAuditRepository.append({
@@ -67,7 +192,7 @@ export async function runForensicAction(
       workspaceId: input.caseRecord.workspaceId,
       type: 'AI_ANALYSIS_FAILED',
       createdAt: new Date().toISOString(),
-      message: `${action.name} failed: offline`,
+      message: t('audit.aiFailed', { action: label, reason: t('ai.error.offline') }),
       meta: { actionId: action.id, runId },
     })
     return {
@@ -75,7 +200,7 @@ export async function runForensicAction(
       entities: [],
       timelineEvents: [],
       status: 'OFFLINE',
-      error: 'Offline — AI actions unavailable. Evidence remains local.',
+      error: t('ai.error.offlineLocal'),
     }
   }
 
@@ -86,7 +211,7 @@ export async function runForensicAction(
     workspaceId: input.caseRecord.workspaceId,
     type: 'AI_ANALYSIS_STARTED',
     createdAt: startedAt,
-    message: `${action.name} started (${status})`,
+    message: t('audit.aiStarted', { action: label, status }),
     meta: { actionId: action.id, runId, evidenceIds: input.evidenceIds },
   })
 
@@ -110,7 +235,14 @@ export async function runForensicAction(
     for (const evidenceId of input.evidenceIds) {
       const evidence = await localEvidenceRepository.get(evidenceId)
       if (!evidence) continue
-      const extraction = await localExtractionRepository.getByEvidence(evidenceId)
+      let extraction = await localExtractionRepository.getByEvidence(evidenceId)
+      extraction = await maybeRunOcr({
+        provider,
+        actionId: action.id,
+        evidence,
+        extraction,
+        caseRecord: input.caseRecord,
+      })
       evidenceContext.push({
         evidenceId: evidence.id,
         fileName: evidence.originalName,
@@ -122,6 +254,8 @@ export async function runForensicAction(
           byteSize: evidence.byteSize,
           importedAt: evidence.importedAt,
           status: evidence.status,
+          processor: extraction?.processor,
+          ocrConfidence: extraction?.ocrConfidence,
         },
       })
     }
@@ -135,7 +269,8 @@ export async function runForensicAction(
         description: input.caseRecord.description,
       },
       evidenceContext,
-      workspaceLanguage: input.workspaceLanguage ?? loadSettings().workspaceLanguage ?? 'sk',
+      workspaceLanguage:
+        input.workspaceLanguage ?? loadSettings().workspaceLanguage ?? 'sk',
       extraContext: input.extraContext,
     })
 
@@ -151,7 +286,7 @@ export async function runForensicAction(
       model: response.model,
       modelVersion: response.modelVersion,
       createdAt: new Date().toISOString(),
-      statement: String(result.statement ?? `${action.name} completed`),
+      statement: String(result.statement ?? t('ai.completedGeneric', { action: label })),
       epistemicClass:
         (result.epistemicClass as FindingRecord['epistemicClass']) ?? 'INFERRED',
       confidence: Number(result.confidence ?? 0.5),
@@ -262,7 +397,7 @@ export async function runForensicAction(
       workspaceId: input.caseRecord.workspaceId,
       type: 'AI_ANALYSIS_COMPLETED',
       createdAt: new Date().toISOString(),
-      message: `${action.name} completed (${response.status})`,
+      message: t('audit.aiCompleted', { action: label, status: response.status }),
       meta: { actionId: action.id, runId, findingId },
     })
 
@@ -273,7 +408,7 @@ export async function runForensicAction(
       status: response.status,
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Analysis failed'
+    const message = mapAiError(error)
     const failStatus =
       error && typeof error === 'object' && 'status' in error
         ? String((error as { status: string }).status)
@@ -302,7 +437,7 @@ export async function runForensicAction(
       workspaceId: input.caseRecord.workspaceId,
       type: 'AI_ANALYSIS_FAILED',
       createdAt: new Date().toISOString(),
-      message: `${action.name} failed: ${message}`,
+      message: t('audit.aiFailed', { action: label, reason: message }),
       meta: { actionId: action.id, runId },
     })
 

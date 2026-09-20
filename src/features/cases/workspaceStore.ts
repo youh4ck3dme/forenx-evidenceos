@@ -23,6 +23,7 @@ import { estimateStorage } from '@/lib/storage/opfs'
 import type { AiConnectionStatus } from '@/features/ai/provider'
 import { probeAiStatus } from '@/features/ai/resolveProvider'
 import { ingestFiles } from '@/features/ingestion/ingest'
+import { t } from '@/lib/i18n'
 
 interface WorkspaceState {
   ready: boolean
@@ -123,7 +124,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const record: CaseRecord = {
       id: createId('case'),
       workspaceId: settings.workspaceId,
-      name: input?.name ?? `Case FX-${String(seq).padStart(3, '0')}`,
+      name:
+        input?.name ??
+        t('case.defaultName', { seq: String(seq).padStart(3, '0') }),
       reference: `FX-${String(seq).padStart(3, '0')}`,
       description: input?.description ?? '',
       createdAt: now,
@@ -139,7 +142,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       workspaceId: record.workspaceId,
       type: 'CASE_CREATED',
       createdAt: now,
-      message: `Case ${record.reference} created`,
+      message: t('audit.caseCreated', { reference: record.reference }),
     })
     patchSettings({ activeCaseId: record.id })
     const cases = await localCaseRepository.list()
@@ -206,7 +209,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const created = await get().createCase()
       caseId = created.id
     }
-    set({ ingestBusy: true, statusMessage: 'Importing evidence…' })
+    set({ ingestBusy: true, statusMessage: t('status.importing') })
     try {
       const results = await ingestFiles(files, {
         caseId,
@@ -216,8 +219,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       if (results[0]) {
         set({ selectedEvidenceIds: [results[0].evidence.id] })
       }
+      const { storageUsage, storageQuota } = get()
+      const nearLimit =
+        storageQuota > 0 && storageUsage / storageQuota > 0.8
       set({
-        statusMessage: `Imported ${results.length} item(s)`,
+        statusMessage: nearLimit
+          ? t('status.storageNearLimit')
+          : t('status.imported', { count: results.length }),
       })
     } finally {
       set({ ingestBusy: false })

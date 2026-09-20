@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Command } from 'cmdk'
 import { useWorkspaceStore } from '@/features/cases/workspaceStore'
 import { runForensicAction } from '@/features/ai/runAnalysis'
@@ -29,6 +29,18 @@ export function CommandPalette({
   const [query, setQuery] = useState('')
   const [pendingAction, setPendingAction] = useState<ForensicActionId | null>(null)
   const { t } = useLocale()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const previousFocus = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    previousFocus.current = document.activeElement as HTMLElement | null
+    const id = window.setTimeout(() => inputRef.current?.focus(), 0)
+    return () => {
+      window.clearTimeout(id)
+      previousFocus.current?.focus?.()
+    }
+  }, [open])
 
   const searchHits = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -125,6 +137,8 @@ export function CommandPalette({
     <>
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]"
+      role="presentation"
+      tabIndex={-1}
       onClick={() => setCommandOpen(false)}
       onKeyDown={(e) => {
         if (e.key === 'Escape') setCommandOpen(false)
@@ -139,6 +153,7 @@ export function CommandPalette({
         }}
       >
         <Command.Input
+          ref={inputRef}
           value={query}
           onValueChange={setQuery}
           placeholder={t('cmd.placeholder')}
