@@ -26,7 +26,7 @@ export function WelcomePage() {
 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
         <img
-          src="/forenx-icon.png"
+          src="/favicon.svg"
           alt=""
           className="mb-8 h-16 w-16 opacity-0 animate-[fadeUp_0.7s_ease_forwards] md:h-20 md:w-20"
           style={{ animationDelay: '40ms' }}
