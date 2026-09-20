@@ -11,6 +11,10 @@ export const sk: Messages = {
   'welcome.footer': 'IndexedDB · OPFS · WebCrypto SHA-256 · Mistral štruktúrované výstupy',
   'welcome.mvp': 'MVP 0.1',
 
+  'theme.label': 'Motív',
+  'theme.dark': 'Tmavý',
+  'theme.light': 'Svetlý',
+
   'sandbox.initializing': 'Inicializujem lokálne úložisko…',
   'sandbox.drawer.cases': 'Prípady a dôkazy',
   'sandbox.drawer.ai': 'ForenX AI',

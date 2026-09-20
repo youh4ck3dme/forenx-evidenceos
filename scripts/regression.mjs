@@ -111,6 +111,15 @@ async function main() {
   assert(await page.getByText('FORENX').first().isVisible(), 'FORENX brand visible')
   await shot(page, 'regression_welcome_sk')
 
+  // 1b) Light wallpaper
+  await page.getByRole('button', { name: /Svetlý|Light/i }).click()
+  await page.waitForTimeout(400)
+  const theme = await page.evaluate(() => document.documentElement.dataset.theme)
+  assert(theme === 'light', 'light theme applied')
+  await shot(page, 'regression_welcome_light')
+  await page.getByRole('button', { name: /Tmavý|Dark/i }).click()
+  await page.waitForTimeout(200)
+
   // 2) Locale switch SK -> EN on welcome
   await page.getByRole('button', { name: /^EN$/i }).click()
   await page.getByRole('button', { name: /Enter Sandbox/i }).waitFor()

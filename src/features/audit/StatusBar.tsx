@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { formatBytes, truncateHash } from '@/lib/utils/cn'
 import { exportCaseJson, exportCaseMarkdown } from '@/features/export/exportCase'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { useLocale } from '@/lib/i18n'
 
 export function StatusBar({
@@ -84,6 +85,7 @@ export function StatusBar({
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <ThemeSwitcher className="mr-1 hidden sm:inline-flex" />
         <LanguageSwitcher className="mr-1" />
         {statusMessage && (
           <span className="max-w-[200px] truncate text-fx-muted">{statusMessage}</span>

@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
+import { WelcomeAtmosphere } from '@/features/cases/WelcomeAtmosphere'
 import { useWorkspaceStore } from '@/features/cases/workspaceStore'
 import { useLocale } from '@/lib/i18n'
 
@@ -11,12 +13,14 @@ export function WelcomePage() {
 
   return (
     <div className="fx-grid-bg relative flex min-h-[100dvh] flex-col overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(122_158_184/0.08),transparent_55%)]" />
+      <WelcomeAtmosphere />
+
       <header className="relative z-10 flex items-center justify-between gap-4 px-6 py-5 md:px-10">
         <div className="font-mono text-[11px] tracking-[0.28em] text-fx-dim uppercase">
           {t('welcome.badge')}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <ThemeSwitcher />
           <LanguageSwitcher />
           <div className="font-mono text-[11px] tracking-[0.18em] text-fx-dim">
             {t('welcome.mvp')}
@@ -28,7 +32,7 @@ export function WelcomePage() {
         <img
           src="/forenx-icon-512.png"
           alt=""
-          className="mb-8 h-16 w-16 opacity-0 animate-[fadeUp_0.7s_ease_forwards] md:h-20 md:w-20"
+          className="mb-8 h-16 w-16 rounded-[18%] shadow-[0_12px_40px_rgb(0_0_0/0.18)] opacity-0 animate-[fadeUp_0.7s_ease_forwards] md:h-20 md:w-20"
           style={{ animationDelay: '40ms' }}
         />
         <p

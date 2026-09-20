@@ -9,6 +9,10 @@ export const en = {
   'welcome.footer': 'IndexedDB · OPFS · WebCrypto SHA-256 · Mistral structured outputs',
   'welcome.mvp': 'MVP 0.1',
 
+  'theme.label': 'Theme',
+  'theme.dark': 'Dark',
+  'theme.light': 'Light',
+
   'sandbox.initializing': 'Initializing local vault…',
   'sandbox.drawer.cases': 'Cases & Evidence',
   'sandbox.drawer.ai': 'ForenX AI',

@@ -41,11 +41,19 @@ export function loadSettings(): WorkspaceSettings {
           parsed.workspaceLanguage === 'en' || parsed.workspaceLanguage === 'sk'
             ? parsed.workspaceLanguage
             : 'sk',
+        theme: parsed.theme === 'light' ? 'light' : 'dark',
       }
       saveSettings(migrated)
       return migrated
     }
-    return parsed
+    return {
+      ...parsed,
+      theme: parsed.theme === 'light' ? 'light' : 'dark',
+      workspaceLanguage:
+        parsed.workspaceLanguage === 'en' || parsed.workspaceLanguage === 'sk'
+          ? parsed.workspaceLanguage
+          : 'sk',
+    }
   } catch {
     const settings = defaultSettings()
     saveSettings(settings)

@@ -216,7 +216,7 @@ export interface AuditEvent {
 
 export interface WorkspaceSettings {
   schemaVersion: number
-  theme: 'dark'
+  theme: 'dark' | 'light'
   activeCaseId: string | null
   workspaceId: string
   /** UI + AI workspace language: sk | en */
