@@ -10,10 +10,18 @@ const defaultSettings = (): WorkspaceSettings => ({
   activeCaseId: null,
   workspaceId: createId('ws'),
   workspaceLanguage: 'en',
-  aiMode: 'auto',
+  aiMode: resolveDefaultAiMode(),
   promptOverrides: {},
   enteredSandbox: false,
 })
+
+function resolveDefaultAiMode(): WorkspaceSettings['aiMode'] {
+  const fromEnv = import.meta.env.VITE_AI_MODE
+  if (fromEnv === 'mock' || fromEnv === 'http' || fromEnv === 'auto') {
+    return fromEnv
+  }
+  return 'auto'
+}
 
 export function loadSettings(): WorkspaceSettings {
   try {
