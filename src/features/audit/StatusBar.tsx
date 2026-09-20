@@ -77,6 +77,7 @@ export function StatusBar({
 
       <div
         className={`hidden font-mono md:block ${storageWarn ? 'text-fx-warn' : 'text-fx-dim'}`}
+        title={storageWarn ? t('status.storageNearLimit') : undefined}
       >
         {t('status.storage', { usage: storageLabel })}
         {storageWarn ? t('status.storageWarn') : ''}

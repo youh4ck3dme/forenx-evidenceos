@@ -21,7 +21,14 @@ function mistralApiPlugin(env: Record<string, string>): Plugin {
           for await (const chunk of req) {
             chunks.push(Buffer.from(chunk))
           }
-          const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as {
+          const bodyText = Buffer.concat(chunks).toString('utf8')
+          if (bodyText.length > 4_000_000) {
+            res.statusCode = 413
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'Payload too large' }))
+            return
+          }
+          const body = JSON.parse(bodyText || '{}') as {
             probe?: boolean
           }
 
@@ -123,8 +130,20 @@ export default defineConfig(({ mode }) => {
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
         navigateFallback: '/index.html',
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+            handler: 'NetworkOnly',
+            method: 'POST',
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+            handler: 'NetworkOnly',
+            method: 'GET',
+          },
+        ],
       },
     }),
   ],

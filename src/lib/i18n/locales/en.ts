@@ -143,4 +143,11 @@ export const en = {
   'lang.sk': 'SK',
   'lang.en': 'EN',
   'lang.label': 'Language',
+
+  'confirm.cancel': 'Cancel',
+  'confirm.confirm': 'Send to AI',
+  'confirm.ai.title': 'Send evidence to AI?',
+  'confirm.ai.body':
+    'Selected evidence text will be sent to the Mistral analysis service via the server proxy. Originals stay local and immutable. Cancel to abort with no network call.',
+  'status.storageNearLimit': 'Browser storage is nearly full. Export or remove evidence.',
 } as const

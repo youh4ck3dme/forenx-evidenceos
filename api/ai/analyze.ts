@@ -1,38 +1,39 @@
 /**
- * Vercel serverless handler placeholder for production deployment.
- * Local development uses the Vite middleware in vite.config.ts.
- *
- * Never expose MISTRAL_API_KEY to the browser.
+ * Vercel Edge proxy → Mistral Chat Completions.
+ * Local dev uses Vite middleware in vite.config.ts (same contract).
  */
+import {
+  handleProbe,
+  jsonResponse,
+  MAX_ANALYZE_BYTES,
+  methodNotAllowed,
+  missingKey,
+  MISTRAL_CHAT_URL,
+  proxyMistral,
+  readJsonBody,
+} from './_shared'
+
 export const config = {
   runtime: 'edge',
 }
 
 export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== 'POST') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405 })
+  if (request.method === 'OPTIONS') {
+    return jsonResponse({ ok: true }, 204)
   }
+  if (request.method !== 'POST') return methodNotAllowed()
 
   const apiKey = process.env.MISTRAL_API_KEY
-  if (!apiKey) {
-    return Response.json(
-      { error: 'MISTRAL_API_KEY not configured', mode: 'unavailable' },
-      { status: 503 },
-    )
-  }
+  const parsed = await readJsonBody(request, MAX_ANALYZE_BYTES)
+  if (!parsed.ok) return parsed.response
 
-  const body = await request.json()
-  const upstream = await fetch('https://api.mistral.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
+  const probe = handleProbe(parsed.body, apiKey)
+  if (probe) return probe
 
-  return new Response(await upstream.text(), {
-    status: upstream.status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  if (!apiKey) return missingKey()
+
+  // Strip client probe flag if present
+  const upstreamBody = { ...parsed.body }
+  delete upstreamBody.probe
+  return proxyMistral(MISTRAL_CHAT_URL, apiKey, upstreamBody)
 }

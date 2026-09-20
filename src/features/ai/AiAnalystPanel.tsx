@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { FORENSIC_ACTIONS, type ForensicActionId } from '@/features/ai/actions/registry'
 import { runForensicAction } from '@/features/ai/runAnalysis'
 import { useWorkspaceStore } from '@/features/cases/workspaceStore'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { cn, formatDateTime } from '@/lib/utils/cn'
 import { localCaseRepository } from '@/lib/storage/repositories'
 import { useLocale, type MessageKey, getLocale } from '@/lib/i18n'
@@ -20,8 +22,9 @@ export function AiAnalystPanel() {
   const setAiBusy = useWorkspaceStore((s) => s.setAiBusy)
   const setStatusMessage = useWorkspaceStore((s) => s.setStatusMessage)
   const { t } = useLocale()
+  const [pendingAction, setPendingAction] = useState<ForensicActionId | null>(null)
 
-  async function runAction(actionId: ForensicActionId) {
+  function requestAction(actionId: ForensicActionId) {
     if (!activeCaseId) {
       setStatusMessage(t('ai.createCaseFirst'))
       return
@@ -43,6 +46,13 @@ export function AiAnalystPanel() {
       return
     }
 
+    setPendingAction(actionId)
+  }
+
+  async function executeAction(actionId: ForensicActionId) {
+    setPendingAction(null)
+    if (!activeCaseId) return
+
     const caseRecord = await localCaseRepository.get(activeCaseId)
     if (!caseRecord) return
 
@@ -58,8 +68,11 @@ export function AiAnalystPanel() {
             : useWorkspaceStore.getState().evidence.map((e) => e.id),
         workspaceLanguage: getLocale(),
       })
-      // Reflect provider outcome after user-triggered call
-      if (result.status === 'LIVE' || result.status === 'MOCK' || result.status === 'OFFLINE') {
+      if (
+        result.status === 'LIVE' ||
+        result.status === 'MOCK' ||
+        result.status === 'OFFLINE'
+      ) {
         useWorkspaceStore.setState({ aiStatus: result.status })
       }
       await refreshCaseData()
@@ -116,7 +129,7 @@ export function AiAnalystPanel() {
                 key={action.id}
                 type="button"
                 disabled={aiBusy}
-                onClick={() => void runAction(action.id)}
+                onClick={() => requestAction(action.id)}
                 className="flex w-full items-start gap-2 rounded-sm border border-transparent px-2 py-1.5 text-left hover:border-fx-border hover:bg-fx-elevated disabled:opacity-50"
               >
                 <span className="font-mono text-[10px] text-fx-dim">
@@ -184,6 +197,16 @@ export function AiAnalystPanel() {
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title={t('confirm.ai.title')}
+        body={t('confirm.ai.body')}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => {
+          if (pendingAction) void executeAction(pendingAction)
+        }}
+      />
     </div>
   )
 }

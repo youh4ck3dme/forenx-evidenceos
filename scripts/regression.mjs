@@ -156,8 +156,19 @@ async function main() {
   const postsAfterImport = aiPosts.length
   assert(postsAfterImport === postsBefore, 'Import must not call AI')
 
-  // 5) AI on click — exactly one analyze (non-probe) after Auto Triage
+  // 5) AI on click — confirm dialog required; cancel must not call AI
+  const postsBeforeTriage = aiPosts.length
   await page.getByRole('button', { name: /Auto triáž|Auto Triage/i }).click()
+  await page.getByRole('heading', { name: /Odoslať dôkaz do AI|Send evidence to AI/i }).waitFor()
+  await page.getByRole('button', { name: /Zrušiť|Cancel/i }).click()
+  await page.waitForTimeout(400)
+  assert(
+    aiPosts.length === postsBeforeTriage,
+    'Cancel confirm must not call AI',
+  )
+
+  await page.getByRole('button', { name: /Auto triáž|Auto Triage/i }).click()
+  await page.getByRole('button', { name: /Odoslať do AI|Send to AI/i }).click()
   await page
     .getByText(/Triage suggests|dokončené|completed|FINANCIAL/i)
     .first()

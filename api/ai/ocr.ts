@@ -1,36 +1,37 @@
 /**
- * Vercel serverless OCR proxy placeholder.
- * Local development uses the Vite middleware in vite.config.ts.
+ * Vercel Edge proxy → Mistral OCR / Document AI.
  */
+import {
+  handleProbe,
+  jsonResponse,
+  MAX_OCR_BYTES,
+  methodNotAllowed,
+  missingKey,
+  MISTRAL_OCR_URL,
+  proxyMistral,
+  readJsonBody,
+} from './_shared'
+
 export const config = {
   runtime: 'edge',
 }
 
 export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== 'POST') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405 })
+  if (request.method === 'OPTIONS') {
+    return jsonResponse({ ok: true }, 204)
   }
+  if (request.method !== 'POST') return methodNotAllowed()
 
   const apiKey = process.env.MISTRAL_API_KEY
-  if (!apiKey) {
-    return Response.json(
-      { error: 'MISTRAL_API_KEY not configured', mode: 'unavailable' },
-      { status: 503 },
-    )
-  }
+  const parsed = await readJsonBody(request, MAX_OCR_BYTES)
+  if (!parsed.ok) return parsed.response
 
-  const body = await request.json()
-  const upstream = await fetch('https://api.mistral.ai/v1/ocr', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
+  const probe = handleProbe(parsed.body, apiKey)
+  if (probe) return probe
 
-  return new Response(await upstream.text(), {
-    status: upstream.status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  if (!apiKey) return missingKey()
+
+  const upstreamBody = { ...parsed.body }
+  delete upstreamBody.probe
+  return proxyMistral(MISTRAL_OCR_URL, apiKey, upstreamBody)
 }

@@ -145,4 +145,11 @@ export const sk: Messages = {
   'lang.sk': 'SK',
   'lang.en': 'EN',
   'lang.label': 'Jazyk',
+
+  'confirm.cancel': 'Zrušiť',
+  'confirm.confirm': 'Odoslať do AI',
+  'confirm.ai.title': 'Odoslať dôkaz do AI?',
+  'confirm.ai.body':
+    'Text vybraného dôkazu sa odošle cez serverový proxy do Mistral analýzy. Originály zostávajú lokálne a nemenné. Zrušením sa nič neodošle.',
+  'status.storageNearLimit': 'Úložisko prehliadača je takmer plné. Exportujte alebo odstráňte dôkazy.',
 }

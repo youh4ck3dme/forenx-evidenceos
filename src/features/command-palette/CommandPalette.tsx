@@ -6,6 +6,7 @@ import { localCaseRepository } from '@/lib/storage/repositories'
 import { exportCaseJson, exportCaseMarkdown } from '@/features/export/exportCase'
 import type { ForensicActionId } from '@/features/ai/actions/registry'
 import { getLocale, useLocale } from '@/lib/i18n'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 export function CommandPalette({
   fileInputRef,
@@ -26,6 +27,7 @@ export function CommandPalette({
   const setStatusMessage = useWorkspaceStore((s) => s.setStatusMessage)
   const setLeftTab = useWorkspaceStore((s) => s.setLeftTab)
   const [query, setQuery] = useState('')
+  const [pendingAction, setPendingAction] = useState<ForensicActionId | null>(null)
   const { t } = useLocale()
 
   const searchHits = useMemo(() => {
@@ -70,9 +72,21 @@ export function CommandPalette({
 
   async function run(actionId: ForensicActionId) {
     if (!activeCaseId) return
+    if (!navigator.onLine) {
+      useWorkspaceStore.setState({ aiStatus: 'OFFLINE' })
+      setStatusMessage(t('ai.offline'))
+      setCommandOpen(false)
+      return
+    }
+    setCommandOpen(false)
+    setPendingAction(actionId)
+  }
+
+  async function executeAction(actionId: ForensicActionId) {
+    if (!activeCaseId) return
     const caseRecord = await localCaseRepository.get(activeCaseId)
     if (!caseRecord) return
-    setCommandOpen(false)
+    setPendingAction(null)
     setAiBusy(true)
     const result = await runForensicAction({
       actionId,
@@ -93,9 +107,22 @@ export function CommandPalette({
     )
   }
 
-  if (!open) return null
+  if (!open) {
+    return (
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title={t('confirm.ai.title')}
+        body={t('confirm.ai.body')}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => {
+          if (pendingAction) void executeAction(pendingAction)
+        }}
+      />
+    )
+  }
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]"
       onClick={() => setCommandOpen(false)}
@@ -193,6 +220,16 @@ export function CommandPalette({
         </div>
       </Command>
     </div>
+    <ConfirmDialog
+      open={pendingAction !== null}
+      title={t('confirm.ai.title')}
+      body={t('confirm.ai.body')}
+      onCancel={() => setPendingAction(null)}
+      onConfirm={() => {
+        if (pendingAction) void executeAction(pendingAction)
+      }}
+    />
+    </>
   )
 }
 
