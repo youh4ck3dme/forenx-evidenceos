@@ -96,18 +96,18 @@ export function SandboxPage() {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-fx-bg">
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-[260px] shrink-0 border-r border-fx-border lg:block">
+    <div className="fx-shell flex flex-col bg-fx-bg">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <aside className="hidden h-full w-[260px] shrink-0 overflow-hidden border-r border-fx-border lg:block">
           <CaseSidebar />
         </aside>
-        <main className="min-w-0 flex-1 border-r border-fx-border">
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden border-r border-fx-border">
           <EvidenceViewer
             evidence={selected}
             onDropFiles={(files) => void importEvidence(files)}
           />
         </main>
-        <aside className="hidden w-[300px] shrink-0 xl:block">
+        <aside className="hidden h-full w-[300px] shrink-0 overflow-hidden xl:block">
           <AiAnalystPanel />
         </aside>
       </div>

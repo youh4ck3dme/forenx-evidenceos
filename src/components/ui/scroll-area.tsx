@@ -5,7 +5,11 @@ export const ScrollArea = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, children, ...props }, ref) => (
-  <div ref={ref} className={cn('overflow-auto', className)} {...props}>
+  <div
+    ref={ref}
+    className={cn('fx-scroll', className)}
+    {...props}
+  >
     {children}
   </div>
 ))

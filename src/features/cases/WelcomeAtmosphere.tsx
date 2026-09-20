@@ -10,7 +10,8 @@ export function WelcomeAtmosphere() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--fx-atmosphere),transparent_58%)]" />
 
-      <div className="fx-atm-sweep absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,transparent,var(--fx-deco),transparent)] opacity-40" />
+      {/* Soft static highlight band (no vertical sweep animation) */}
+      <div className="absolute inset-x-0 top-[12%] h-px bg-[color:var(--fx-deco)] opacity-40" />
 
       {/* Corner brackets — evidence frame */}
       <Corner className="top-16 left-6 md:top-20 md:left-10" />
@@ -31,7 +32,7 @@ export function WelcomeAtmosphere() {
 
       {/* Node graph */}
       <svg
-        className="fx-atm-drift absolute bottom-[18%] left-[6%] hidden h-36 w-48 text-[color:var(--fx-deco-strong)] sm:block"
+        className="absolute bottom-[18%] left-[6%] hidden h-36 w-48 text-[color:var(--fx-deco-strong)] sm:block"
         viewBox="0 0 192 144"
         fill="none"
       >
@@ -62,20 +63,14 @@ export function WelcomeAtmosphere() {
       <div className="fx-atm-fade absolute top-[22%] left-8 hidden font-mono text-[9px] tracking-[0.16em] text-[color:var(--fx-hash)] uppercase md:block">
         GRID 48 · ORIGIN 0,0
       </div>
-      <div
-        className="fx-atm-drift absolute top-[38%] right-[6%] hidden max-w-[11rem] font-mono text-[9px] leading-4 tracking-wider text-[color:var(--fx-hash)] md:block"
-        style={{ animationDelay: '2s' }}
-      >
+      <div className="fx-atm-fade absolute top-[38%] right-[6%] hidden max-w-[11rem] font-mono text-[9px] leading-4 tracking-wider text-[color:var(--fx-hash)] md:block">
         SHA-256
         <br />
         a7f3…c91e
         <br />
         CHAIN · IMMUTABLE
       </div>
-      <div
-        className="fx-atm-drift absolute bottom-[28%] right-[10%] hidden font-mono text-[9px] tracking-[0.2em] text-[color:var(--fx-hash)] uppercase lg:block"
-        style={{ animationDelay: '4s' }}
-      >
+      <div className="fx-atm-fade absolute bottom-[28%] right-[10%] hidden font-mono text-[9px] tracking-[0.2em] text-[color:var(--fx-hash)] uppercase lg:block">
         EVIDENCE · LOCAL
       </div>
       <div className="absolute bottom-[14%] left-[28%] hidden font-mono text-[9px] tracking-[0.18em] text-[color:var(--fx-hash)] uppercase sm:block">

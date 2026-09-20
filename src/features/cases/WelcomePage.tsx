@@ -12,10 +12,10 @@ export function WelcomePage() {
   const { t } = useLocale()
 
   return (
-    <div className="fx-grid-bg relative flex min-h-[100dvh] flex-col overflow-hidden">
+    <div className="fx-shell fx-grid-bg relative flex flex-col">
       <WelcomeAtmosphere />
 
-      <header className="relative z-10 flex items-center justify-between gap-4 px-6 py-5 md:px-10">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-4 px-6 py-4 md:px-10 md:py-5">
         <div className="font-mono text-[11px] tracking-[0.28em] text-fx-dim uppercase">
           {t('welcome.badge')}
         </div>
@@ -28,34 +28,34 @@ export function WelcomePage() {
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-6 py-6 text-center">
         <img
           src="/forenx-icon-512.png"
           alt=""
-          className="mb-8 h-16 w-16 rounded-[18%] shadow-[0_12px_40px_rgb(0_0_0/0.18)] opacity-0 animate-[fadeUp_0.7s_ease_forwards] md:h-20 md:w-20"
+          className="mb-6 h-14 w-14 rounded-[18%] shadow-[0_12px_40px_rgb(0_0_0/0.18)] opacity-0 animate-[fadeIn_0.6s_ease_forwards] md:mb-8 md:h-20 md:w-20"
           style={{ animationDelay: '40ms' }}
         />
         <p
-          className="mb-6 font-mono text-[11px] tracking-[0.35em] text-fx-accent uppercase opacity-0 animate-[fadeUp_0.7s_ease_forwards]"
+          className="mb-4 font-mono text-[11px] tracking-[0.35em] text-fx-accent uppercase opacity-0 animate-[fadeIn_0.6s_ease_forwards] md:mb-6"
           style={{ animationDelay: '80ms' }}
         >
           {t('welcome.eyebrow')}
         </p>
         <h1
-          className="max-w-4xl text-[clamp(2.4rem,7vw,5.2rem)] leading-[0.95] font-semibold tracking-[-0.04em] text-fx-text opacity-0 animate-[fadeUp_0.8s_ease_forwards]"
+          className="max-w-4xl text-[clamp(2rem,6.5vw,5.2rem)] leading-[0.95] font-semibold tracking-[-0.04em] text-fx-text opacity-0 animate-[fadeIn_0.7s_ease_forwards]"
           style={{ animationDelay: '160ms' }}
         >
           {t('welcome.brand')}
           <span className="block text-fx-muted">{t('welcome.product')}</span>
         </h1>
         <p
-          className="mt-6 max-w-xl text-base text-fx-muted md:text-lg opacity-0 animate-[fadeUp_0.8s_ease_forwards]"
+          className="mt-4 max-w-xl text-sm text-fx-muted opacity-0 animate-[fadeIn_0.7s_ease_forwards] md:mt-6 md:text-lg"
           style={{ animationDelay: '280ms' }}
         >
           {t('welcome.tagline')}
         </p>
         <div
-          className="mt-10 opacity-0 animate-[fadeUp_0.8s_ease_forwards]"
+          className="mt-8 opacity-0 animate-[fadeIn_0.7s_ease_forwards] md:mt-10"
           style={{ animationDelay: '420ms' }}
         >
           <Button
@@ -71,14 +71,14 @@ export function WelcomePage() {
         </div>
       </main>
 
-      <footer className="relative z-10 border-t border-fx-border-subtle px-6 py-4 font-mono text-[11px] text-fx-dim md:px-10">
+      <footer className="relative z-10 shrink-0 border-t border-fx-border-subtle px-6 py-3 font-mono text-[11px] text-fx-dim md:px-10 md:py-4">
         {t('welcome.footer')}
       </footer>
 
       <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </div>
