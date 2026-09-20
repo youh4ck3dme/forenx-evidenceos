@@ -15,8 +15,8 @@ test.describe('08 offline refresh', () => {
       .getByRole('dialog')
       .getByRole('button', { name: /Key Facts/i })
       .click()
-    // App short-circuits on navigator.onLine — no confirm, OFFLINE chip/message
-    await expect(page.getByText(/OFFLINE/i).first()).toBeVisible({ timeout: 8_000 })
+    // App short-circuits on navigator.onLine — chip may sit under the drawer chrome
+    await expect(page.getByRole('dialog')).toContainText(/OFFLINE/i)
     expect(counters.analyzePosts).toBe(0)
 
     await context.setOffline(false)

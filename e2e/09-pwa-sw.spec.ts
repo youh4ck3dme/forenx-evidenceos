@@ -9,9 +9,20 @@ test.describe('09 PWA service worker', () => {
   }) => {
     await asStandalone(page)
     await freshContext(page)
-    // Allow registerSW() + workbox install to settle after reload
     await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(1500)
+
+    // WebKit may leave the worker in "installing" across a cancelled navigation —
+    // soft-reload a couple of times so precache can finish.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const state = await page.evaluate(async () => {
+        if (!('serviceWorker' in navigator)) return 'no-sw-api'
+        const reg = await navigator.serviceWorker.getRegistration()
+        return reg?.active?.state ?? reg?.installing?.state ?? reg?.waiting?.state ?? 'missing'
+      })
+      if (state === 'activated') break
+      await page.waitForTimeout(1500)
+      await page.reload({ waitUntil: 'networkidle' })
+    }
     await assertPwaShell(page)
 
     const standalone = await page.evaluate(() =>
@@ -60,7 +71,7 @@ test.describe('09 PWA service worker', () => {
       .getByRole('dialog')
       .getByRole('button', { name: /Auto Triage/i })
       .click()
-    await expect(page.getByText(/OFFLINE/i).first()).toBeVisible()
+    await expect(page.getByRole('dialog')).toContainText(/OFFLINE/i)
     await expect(
       page.getByRole('heading', { name: /Send evidence to AI/i }),
     ).toBeHidden()

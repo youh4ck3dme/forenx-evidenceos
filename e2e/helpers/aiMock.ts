@@ -52,7 +52,8 @@ export async function installAiRouteMock(
   page: Page,
   counters: AiMockCounters = { analyzePosts: 0, ocrPosts: 0, probePosts: 0 },
 ): Promise<AiMockCounters> {
-  await page.route('**/api/ai/**', async (route: Route) => {
+  // Context-level route intercepts requests even when a service worker is active.
+  await page.context().route('**/api/ai/**', async (route: Route) => {
     const req = route.request()
     if (req.method() !== 'POST') {
       await route.continue()

@@ -25,6 +25,16 @@ export async function bootSandbox(
   }
 
   await freshContext(page)
+  // Force HTTP provider so analyze/OCR always hit mocked /api/ai (preview has no Vite AI middleware).
+  await page.evaluate(() => {
+    const key = 'forenx.workspace.settings'
+    const raw = localStorage.getItem(key)
+    const settings = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+    settings.aiMode = 'http'
+    settings.schemaVersion = 2
+    localStorage.setItem(key, JSON.stringify(settings))
+  })
+
   await expect(page.getByRole('button', { name: /Vstúpiť do sandboxu|Enter Sandbox/i })).toBeVisible({
     timeout: 30_000,
   })

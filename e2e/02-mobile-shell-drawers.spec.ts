@@ -21,9 +21,9 @@ test.describe('02 mobile shell drawers', () => {
     await page.getByRole('dialog').getByRole('button', { name: /^EN$/i }).click()
     await closeDrawer(page)
 
-    // Overlay close: open Cases, click backdrop
+    // Overlay close: Cases drawer is left-aligned (~420px); click the uncovered right strip.
     await openCasesDrawer(page)
-    await page.locator('div.fixed.inset-0.z-40').click({ position: { x: 8, y: 8 }, force: true })
+    await page.mouse.click(422, 120)
     await expect(page.getByRole('dialog')).toBeHidden()
   })
 })
