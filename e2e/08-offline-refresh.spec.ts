@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { bootSandbox, FIXTURES, importFile, openAiDrawer } from '../helpers/app'
+import { bootSandbox, FIXTURES, importFile, openAiDrawer } from './helpers/app'
 
 test.describe('08 offline refresh', () => {
   test('Offline Key Facts; Refresh AI status (mocked probe)', async ({

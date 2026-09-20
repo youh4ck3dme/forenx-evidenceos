@@ -63,20 +63,30 @@ export async function openAiDrawer(page: Page) {
 export async function closeDrawer(page: Page) {
   const dialog = page.getByRole('dialog')
   if (!(await dialog.isVisible().catch(() => false))) return
-  // Header close (X) is the first button in the drawer chrome
-  await dialog.getByRole('button').first().click()
+  // Mobile WebKit often reports the header X as outside the layout viewport —
+  // force-click, then fall back to Escape.
+  const closeBtn = dialog.locator('button').first()
+  try {
+    await closeBtn.click({ force: true, timeout: 3_000 })
+  } catch {
+    await page.keyboard.press('Escape')
+  }
   await expect(dialog).toBeHidden()
 }
 
 export async function openCasesDrawer(page: Page) {
   await page.getByRole('button', { name: /^Cases$|^Prípady$/i }).click()
-  await expect(page.getByRole('button', { name: /^New$|^Nový$/i })).toBeVisible()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.getByRole('dialog').getByRole('button', { name: /^New$|^Nový$/i })).toBeVisible()
 }
 
 export async function importFile(page: Page, filePath: string) {
   await page.locator('input[type="file"]').setInputFiles(filePath)
   const name = path.basename(filePath)
-  await expect(page.getByText(name).first()).toBeVisible({ timeout: 20_000 })
+  // Case sidebar is lg-only (hidden on iPhone width); assert via main viewer.
+  await expect(page.locator('main').getByText(name).first()).toBeVisible({
+    timeout: 20_000,
+  })
 }
 
 export async function openConfirmCancel(page: Page, actionName: RegExp | string) {

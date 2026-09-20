@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { bootSandbox, FIXTURES, importFile } from '../helpers/app'
+import { bootSandbox, FIXTURES, importFile } from './helpers/app'
 
 test.describe('06 command palette', () => {
   test('open via StatusBar/keyboard, Add/Audit/Export/Auto Triage+confirm, Esc', async ({

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { bootSandbox, FIXTURES, importFile } from '../helpers/app'
+import { bootSandbox, FIXTURES, importFile } from './helpers/app'
 
 test.describe('10 viewer PDF', () => {
   test('multi-page PDF Prev/Next', async ({ page }) => {

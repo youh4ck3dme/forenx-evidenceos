@@ -5,7 +5,7 @@ import {
   FIXTURES,
   importFile,
   openAiDrawer,
-} from '../helpers/app'
+} from './helpers/app'
 
 test.describe('05 AI confirm matrix', () => {
   test('each AI action Cancel wire-check; Auto Triage + OCR full Confirm; Esc', async ({

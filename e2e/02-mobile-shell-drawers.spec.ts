@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { bootSandbox, closeDrawer, openAiDrawer, openCasesDrawer } from '../helpers/app'
+import { bootSandbox, closeDrawer, openAiDrawer, openCasesDrawer } from './helpers/app'
 
 test.describe('02 mobile shell drawers', () => {
   test('Cases/AI drawers open+close (X), Lang inside', async ({ page }) => {

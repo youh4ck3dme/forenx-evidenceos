@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { bootSandbox, FIXTURES, importFile } from '../helpers/app'
+import { bootSandbox, FIXTURES, importFile } from './helpers/app'
 
 test.describe('07 audit export', () => {
   test('Audit open/close; JSON+MD export → EXPORT_CREATED', async ({ page }) => {

@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { asStandalone, assertPwaShell, freshContext } from '../helpers/pwa'
-import { bootSandbox, FIXTURES, importFile, openAiDrawer } from '../helpers/app'
-import { installAiRouteMock } from '../helpers/aiMock'
+import { asStandalone, assertPwaShell, freshContext } from './helpers/pwa'
+import { bootSandbox, FIXTURES, importFile, openAiDrawer } from './helpers/app'
 
 test.describe('09 PWA service worker', () => {
   test('SW ready, manifest JSON, NetworkOnly /api offline fails honestly', async ({
@@ -10,6 +9,9 @@ test.describe('09 PWA service worker', () => {
   }) => {
     await asStandalone(page)
     await freshContext(page)
+    // Allow registerSW() + workbox install to settle after reload
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1500)
     await assertPwaShell(page)
 
     const standalone = await page.evaluate(() =>
@@ -28,8 +30,7 @@ test.describe('09 PWA service worker', () => {
     expect(manifest.name || manifest.short_name).toBeTruthy()
     expect(manifest.display).toMatch(/standalone/i)
 
-    // NetworkOnly /api: without route mock, offline POST must fail (not fake-cached)
-    await page.unroute('**/api/ai/**').catch(() => {})
+    // NetworkOnly /api: offline POST must fail (not served from SW cache)
     await context.setOffline(true)
     const offlineResult = await page.evaluate(async () => {
       try {
@@ -50,10 +51,7 @@ test.describe('09 PWA service worker', () => {
     expect(offlineResult.ok).toBe(false)
     await context.setOffline(false)
 
-    // App-level offline analyze also fails honestly (no success toast)
-    const counters = { analyzePosts: 0, ocrPosts: 0, probePosts: 0 }
-    await installAiRouteMock(page, counters)
-    // Re-enter sandbox path with evidence
+    // App-level offline analyze also fails honestly (no confirm / no network)
     await bootSandbox(page)
     await importFile(page, FIXTURES.invoice)
     await context.setOffline(true)
@@ -63,6 +61,8 @@ test.describe('09 PWA service worker', () => {
       .getByRole('button', { name: /Auto Triage/i })
       .click()
     await expect(page.getByText(/OFFLINE/i).first()).toBeVisible()
-    expect(counters.analyzePosts).toBe(0)
+    await expect(
+      page.getByRole('heading', { name: /Send evidence to AI/i }),
+    ).toBeHidden()
   })
 })

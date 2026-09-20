@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { freshContext } from '../helpers/pwa'
+import { freshContext } from './helpers/pwa'
 
 test.describe('01 welcome theme locale', () => {
   test('theme Dark/Light, SK/EN, Enter Sandbox', async ({ page }) => {

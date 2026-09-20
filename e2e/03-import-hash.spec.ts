@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { bootSandbox, FIXTURES, importFile } from '../helpers/app'
+import { bootSandbox, FIXTURES, importFile } from './helpers/app'
 
 test.describe('03 import hash', () => {
   test('Add Evidence + SHA256 + immutable badge', async ({ page }) => {

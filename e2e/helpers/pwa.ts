@@ -23,15 +23,18 @@ export async function assertPwaShell(page: Page) {
     /.+/,
   )
 
+    // Prefer getRegistration over ready — ready can hang if registration is mid-flight.
   await expect
     .poll(
       async () =>
         page.evaluate(async () => {
           if (!('serviceWorker' in navigator)) return 'no-sw-api'
-          const ready = await navigator.serviceWorker.ready
-          return ready?.active?.state ?? 'missing'
+          const reg = await navigator.serviceWorker.getRegistration()
+          if (reg?.active?.state === 'activated') return 'activated'
+          if (reg?.installing || reg?.waiting) return 'installing'
+          return 'missing'
         }),
-      { timeout: 45_000 },
+      { timeout: 60_000, intervals: [500, 1000, 2000] },
     )
     .toBe('activated')
 }
