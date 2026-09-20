@@ -1,0 +1,91 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --color-fx-bg: #0a0b0d;
+  --color-fx-surface: #111318;
+  --color-fx-panel: #15181e;
+  --color-fx-elevated: #1a1e26;
+  --color-fx-border: #2a303a;
+  --color-fx-border-subtle: #1e232b;
+  --color-fx-text: #e8eaef;
+  --color-fx-muted: #8b929e;
+  --color-fx-dim: #5c6570;
+  --color-fx-accent: #7a9eb8;
+  --color-fx-accent-soft: #3d5366;
+  --color-fx-warn: #c4a35a;
+  --color-fx-danger: #b86b6b;
+  --color-fx-ok: #6b9e7a;
+  --color-fx-glass: rgb(17 19 24 / 0.72);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-fx-bg);
+    color: var(--color-fx-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-fx-accent) 35%, transparent);
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .fx-glass {
+    background: var(--color-fx-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .fx-grid-bg {
+    background-color: var(--color-fx-bg);
+    background-image:
+      linear-gradient(rgb(42 48 58 / 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(42 48 58 / 0.35) 1px, transparent 1px),
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgb(61 83 102 / 0.25), transparent 60%);
+    background-size:
+      48px 48px,
+      48px 48px,
+      100% 100%;
+  }
+
+  .fx-scanline {
+    position: relative;
+  }
+
+  .fx-scanline::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgb(0 0 0 / 0.03) 2px,
+      rgb(0 0 0 / 0.03) 4px
+    );
+  }
+}

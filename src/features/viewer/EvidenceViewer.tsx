@@ -1,0 +1,252 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { marked } from 'marked'
+import { readEvidenceBlob } from '@/lib/storage/opfs'
+import { localExtractionRepository } from '@/lib/storage/repositories'
+import type { EvidenceItem, ExtractionRecord } from '@/lib/storage/types'
+import { sanitizeHtmlToText } from '@/lib/security/evidence'
+import { cn, formatBytes, truncateHash } from '@/lib/utils/cn'
+import { pdfjs } from '@/lib/parsers'
+import { ScrollArea } from '@/components/ui/scroll-area'
+
+marked.setOptions({ breaks: true })
+
+export function EvidenceViewer({
+  evidence,
+  onDropFiles,
+}: {
+  evidence: EvidenceItem | null
+  onDropFiles: (files: FileList) => void
+}) {
+  const [extraction, setExtraction] = useState<ExtractionRecord | null>(null)
+  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [textContent, setTextContent] = useState<string>('')
+  const [pdfPages, setPdfPages] = useState<string[]>([])
+  const [page, setPage] = useState(1)
+  const [dragOver, setDragOver] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    let revoked: string | null = null
+    let cancelled = false
+
+    async function load() {
+      setError(null)
+      setPdfPages([])
+      setTextContent('')
+      setExtraction(null)
+      setPage(1)
+      if (!evidence) {
+        setObjectUrl(null)
+        return
+      }
+
+      const ex = await localExtractionRepository.getByEvidence(evidence.id)
+      if (!cancelled) setExtraction(ex ?? null)
+
+      try {
+        const path = evidence.normalizedPath ?? evidence.storagePath
+        const blob = await readEvidenceBlob(path)
+        const url = URL.createObjectURL(blob)
+        revoked = url
+        if (cancelled) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        setObjectUrl(url)
+
+        const mime = evidence.detectedMime
+        const name = evidence.originalName.toLowerCase()
+
+        if (mime === 'application/pdf' || name.endsWith('.pdf')) {
+          const data = new Uint8Array(await blob.arrayBuffer())
+          const doc = await pdfjs.getDocument({ data }).promise
+          const pages: string[] = []
+          for (let i = 1; i <= doc.numPages; i += 1) pages.push(String(i))
+          if (!cancelled) setPdfPages(pages)
+        } else if (
+          mime.startsWith('text/') ||
+          /\.(txt|md|csv|json|xml|html|htm|rtf)$/i.test(name)
+        ) {
+          const text = await blob.text()
+          if (!cancelled) setTextContent(text)
+        } else if (ex?.text) {
+          if (!cancelled) setTextContent(ex.text)
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : 'Failed to load evidence')
+        }
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+      if (revoked) URL.revokeObjectURL(revoked)
+    }
+  }, [evidence])
+
+  useEffect(() => {
+    async function renderPdfPage() {
+      if (!evidence || !objectUrl || pdfPages.length === 0 || !canvasRef.current) return
+      const blob = await fetch(objectUrl).then((r) => r.arrayBuffer())
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(blob) }).promise
+      const pdfPage = await doc.getPage(page)
+      const viewport = pdfPage.getViewport({ scale: 1.25 })
+      const canvas = canvasRef.current
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      canvas.width = viewport.width
+      canvas.height = viewport.height
+      await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise
+    }
+    void renderPdfPage()
+  }, [evidence, objectUrl, pdfPages, page])
+
+  const mdHtml = useMemo(() => {
+    if (!evidence?.originalName.toLowerCase().endsWith('.md')) return null
+    const raw = marked.parse(textContent || extraction?.text || '') as string
+    // Never inject unsanitized HTML — convert to safe text blocks via marked then strip tags for display as preformatted structure
+    return sanitizeHtmlToText(raw)
+  }, [evidence, textContent, extraction])
+
+  if (!evidence) {
+    return (
+      <div
+        className={cn(
+          'flex h-full flex-col items-center justify-center border border-dashed border-fx-border bg-fx-surface/40 px-6 text-center transition-colors',
+          dragOver && 'border-fx-accent bg-fx-accent/5',
+        )}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragOver(false)
+          if (e.dataTransfer.files?.length) onDropFiles(e.dataTransfer.files)
+        }}
+      >
+        <div className="font-mono text-[11px] tracking-[0.28em] text-fx-accent uppercase">
+          Evidence viewer
+        </div>
+        <p className="mt-3 max-w-md text-sm text-fx-muted">
+          Drag & drop evidence here, or use Add Evidence. Supported: PDF, images,
+          DOCX, RTF, Markdown, text, CSV, JSON, XML, HTML.
+        </p>
+      </div>
+    )
+  }
+
+  const isImage =
+    evidence.detectedMime.startsWith('image/') ||
+    /\.(png|jpe?g|jpe|webp|heic|heif|avif)$/i.test(evidence.originalName)
+  const isPdf =
+    evidence.detectedMime === 'application/pdf' ||
+    evidence.originalName.toLowerCase().endsWith('.pdf')
+
+  return (
+    <div
+      className="flex h-full min-h-0 flex-col bg-fx-surface"
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragOver(true)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        if (e.dataTransfer.files?.length) onDropFiles(e.dataTransfer.files)
+      }}
+    >
+      <div className="flex flex-wrap items-center gap-3 border-b border-fx-border px-4 py-2">
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium text-fx-text">
+            {evidence.originalName}
+          </div>
+          <div className="mt-0.5 font-mono text-[10px] tracking-wide text-fx-dim uppercase">
+            {evidence.detectedMime} · {formatBytes(evidence.byteSize)} ·{' '}
+            {evidence.status}
+            {evidence.quarantineReason ? ` · ${evidence.quarantineReason}` : ''}
+          </div>
+        </div>
+        <div className="font-mono text-[10px] text-fx-muted">
+          SHA256 {truncateHash(evidence.sha256)}
+        </div>
+        <div className="rounded-sm border border-fx-border px-2 py-0.5 font-mono text-[10px] tracking-wider text-fx-ok uppercase">
+          Original / Immutable
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1">
+        {error && (
+          <div className="p-4 text-sm text-fx-danger">{error}</div>
+        )}
+        {evidence.status === 'QUARANTINED' && (
+          <div className="p-4 text-sm text-fx-warn">
+            Quarantined: {evidence.quarantineReason ?? 'unsupported content'}
+          </div>
+        )}
+        {!error && isPdf && (
+          <ScrollArea className="h-full p-4">
+            <canvas ref={canvasRef} className="mx-auto max-w-full bg-white shadow-lg" />
+          </ScrollArea>
+        )}
+        {!error && isImage && objectUrl && (
+          <ScrollArea className="h-full p-4">
+            <img
+              src={objectUrl}
+              alt={evidence.originalName}
+              className="mx-auto max-h-full max-w-full object-contain"
+            />
+          </ScrollArea>
+        )}
+        {!error && !isPdf && !isImage && (
+          <ScrollArea className="h-full p-4">
+            {evidence.originalName.toLowerCase().endsWith('.md') ? (
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-fx-text">
+                {mdHtml || textContent || extraction?.text || 'No content'}
+              </pre>
+            ) : (
+              <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-fx-muted">
+                {textContent || extraction?.text || 'No extracted text'}
+              </pre>
+            )}
+          </ScrollArea>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4 border-t border-fx-border px-4 py-2 font-mono text-[10px] text-fx-dim">
+        {isPdf && pdfPages.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="hover:text-fx-text"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Prev
+            </button>
+            <span>
+              page {page}/{pdfPages.length}
+            </span>
+            <button
+              type="button"
+              className="hover:text-fx-text"
+              disabled={page >= pdfPages.length}
+              onClick={() => setPage((p) => Math.min(pdfPages.length, p + 1))}
+            >
+              Next
+            </button>
+          </div>
+        )}
+        <span>Section {evidence.sectionOverride ?? evidence.section}</span>
+        {extraction?.ocrConfidence != null && (
+          <span>OCR {(extraction.ocrConfidence * 100).toFixed(1)}%</span>
+        )}
+        {extraction && <span>Extracted via {extraction.processor}</span>}
+      </div>
+    </div>
+  )
+}
