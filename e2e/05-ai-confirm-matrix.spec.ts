@@ -57,14 +57,7 @@ test.describe('05 AI confirm matrix', () => {
       timeout: 20_000,
     })
 
-    // Full Confirm: OCR & Structure (image selected — re-select via Cases if needed)
-    // Evidence selection: last import may be selected; ensure PNG is selected
-    await page.keyboard.press('Escape') // close AI drawer if still open
-    await page.getByRole('button', { name: /^Cases$/i }).click()
-    await page.getByRole('dialog').getByText('scan_sample.png').first().click()
-    await page.keyboard.press('Escape')
-
-    await openAiDrawer(page)
+    // Full Confirm: OCR & Structure (PNG still selected from last import)
     const beforeOcr = counters.ocrPosts
     await page
       .getByRole('dialog')

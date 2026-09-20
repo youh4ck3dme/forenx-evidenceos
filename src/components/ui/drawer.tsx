@@ -21,7 +21,7 @@ export function Drawer({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/55 data-[state=open]:animate-in" />
         <Dialog.Content
           className={cn(
-            'fixed z-50 flex h-full w-[min(420px,100vw)] flex-col border-fx-border bg-fx-panel shadow-2xl outline-none',
+            'fixed inset-y-0 z-50 flex h-full w-[min(420px,100vw)] flex-col border-fx-border bg-fx-panel shadow-2xl outline-none',
             side === 'right' ? 'right-0 border-l' : 'left-0 border-r',
           )}
         >

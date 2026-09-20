@@ -113,21 +113,24 @@ export async function writeEvidenceBlob(
   filename: string,
   data: Blob,
 ): Promise<string> {
+  const path = buildStoragePath(caseId, bucket, filename)
+  // Always keep an in-session mirror. WebKit OPFS reads can hang/fail with
+  // transient UnknownError even after a successful write.
+  memoryBlobs.set(path, data)
   try {
-    return await writeOpfsFile(caseId, bucket, filename, data)
+    await writeOpfsFile(caseId, bucket, filename, data)
   } catch {
-    const path = buildStoragePath(caseId, bucket, filename)
-    memoryBlobs.set(path, data)
-    return path
+    /* memory mirror is enough for this session */
   }
+  return path
 }
 
 export async function readEvidenceBlob(storagePath: string): Promise<Blob> {
+  const mirrored = memoryBlobs.get(storagePath)
+  if (mirrored) return mirrored
   try {
     return await readOpfsByPath(storagePath)
   } catch {
-    const blob = memoryBlobs.get(storagePath)
-    if (!blob) throw new Error(`Evidence blob not found: ${storagePath}`)
-    return blob
+    throw new Error(`Evidence blob not found: ${storagePath}`)
   }
 }

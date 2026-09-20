@@ -32,6 +32,7 @@ export function EvidenceViewer({
   useEffect(() => {
     let revoked: string | null = null
     let cancelled = false
+    let loadingTask: { destroy: () => void } | null = null
 
     async function load() {
       setError(null)
@@ -65,7 +66,9 @@ export function EvidenceViewer({
 
         if (mime === 'application/pdf' || name.endsWith('.pdf')) {
           const data = new Uint8Array(await blob.arrayBuffer())
-          const doc = await pdfjs.getDocument({ data }).promise
+          const task = pdfjs.getDocument({ data })
+          loadingTask = task
+          const doc = await task.promise
           const pages: string[] = []
           for (let i = 1; i <= doc.numPages; i += 1) pages.push(String(i))
           if (!cancelled) setPdfPages(pages)
@@ -90,18 +93,39 @@ export function EvidenceViewer({
     void load()
     return () => {
       cancelled = true
+      try {
+        loadingTask?.destroy()
+      } catch {
+        /* ignore */
+      }
       if (revoked) URL.revokeObjectURL(revoked)
     }
-  }, [evidence, t])
+    // Intentionally omit `t` — useLocale() returns a new function each render and
+    // would retrigger this effect in a tight loop (breaks pdf.js on WebKit).
+  }, [
+    evidence?.id,
+    evidence?.storagePath,
+    evidence?.normalizedPath,
+    evidence?.detectedMime,
+    evidence?.originalName,
+  ])
 
   useEffect(() => {
+    let cancelled = false
+    let loadingTask: { destroy: () => void } | null = null
+
     async function renderPdfPage() {
       if (!evidence || !objectUrl || pdfPages.length === 0 || !canvasRef.current) return
       const blob = await fetch(objectUrl).then((r) => r.arrayBuffer())
-      const doc = await pdfjs.getDocument({ data: new Uint8Array(blob) }).promise
+      if (cancelled) return
+      const task = pdfjs.getDocument({ data: new Uint8Array(blob) })
+      loadingTask = task
+      const doc = await task.promise
+      if (cancelled) return
       const pdfPage = await doc.getPage(page)
       const viewport = pdfPage.getViewport({ scale: 1.25 })
       const canvas = canvasRef.current
+      if (!canvas || cancelled) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       canvas.width = viewport.width
@@ -109,7 +133,15 @@ export function EvidenceViewer({
       await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise
     }
     void renderPdfPage()
-  }, [evidence, objectUrl, pdfPages, page])
+    return () => {
+      cancelled = true
+      try {
+        loadingTask?.destroy()
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [evidence?.id, objectUrl, pdfPages, page])
 
   const mdHtml = useMemo(() => {
     if (!evidence?.originalName.toLowerCase().endsWith('.md')) return null

@@ -26,7 +26,7 @@ test.describe('06 command palette', () => {
     await expect(page.getByPlaceholder(/Search or run/i)).toBeVisible()
 
     // Add evidence item exists
-    await expect(page.getByText(/Add evidence/i)).toBeVisible()
+    await expect(page.getByText(/^Add evidence$/i)).toBeVisible()
 
     // Open audit via palette
     await page.getByText(/^Open audit log$/i).click()

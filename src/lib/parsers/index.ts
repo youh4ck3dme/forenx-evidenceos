@@ -85,22 +85,31 @@ export async function extractContent(
 
 async function extractPdf(file: File): Promise<ExtractionResult> {
   const data = new Uint8Array(await file.arrayBuffer())
-  const doc = await pdfjs.getDocument({ data }).promise
-  const pages: string[] = []
-  for (let i = 1; i <= doc.numPages; i += 1) {
-    const page = await doc.getPage(i)
-    const content = await page.getTextContent()
-    const strings = content.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .filter(Boolean)
-    pages.push(strings.join(' '))
-  }
-  return {
-    text: pages.join('\n\n'),
-    pageCount: doc.numPages,
-    languageHints: [],
-    processor: 'pdf.js',
-    processorVersion: pdfjs.version,
+  const task = pdfjs.getDocument({ data })
+  try {
+    const doc = await task.promise
+    const pages: string[] = []
+    for (let i = 1; i <= doc.numPages; i += 1) {
+      const page = await doc.getPage(i)
+      const content = await page.getTextContent()
+      const strings = content.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .filter(Boolean)
+      pages.push(strings.join(' '))
+    }
+    return {
+      text: pages.join('\n\n'),
+      pageCount: doc.numPages,
+      languageHints: [],
+      processor: 'pdf.js',
+      processorVersion: pdfjs.version,
+    }
+  } finally {
+    try {
+      task.destroy()
+    } catch {
+      /* ignore */
+    }
   }
 }
 

@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test'
 
 /** Clear persisted workspace settings and reload. */
 export async function freshContext(page: Page) {
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.evaluate(() => {
     try {
       localStorage.clear()
@@ -11,7 +11,8 @@ export async function freshContext(page: Page) {
       /* ignore */
     }
   })
-  await page.reload({ waitUntil: 'domcontentloaded' })
+  // Prefer a fresh navigation over reload() — reload cancels in-flight SW registration on WebKit.
+  await page.goto('/', { waitUntil: 'networkidle' })
 }
 
 /** Assert PWA shell signals: SW ready, manifest link, apple-touch + theme-color. */

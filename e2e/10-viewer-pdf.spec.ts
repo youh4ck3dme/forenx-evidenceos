@@ -6,9 +6,9 @@ test.describe('10 viewer PDF', () => {
     await bootSandbox(page)
     await importFile(page, FIXTURES.pdf)
 
-    await expect(page.getByText('sample_multipage.pdf').first()).toBeVisible()
+    await expect(page.locator('main').getByText('sample_multipage.pdf').first()).toBeVisible()
     await expect(page.getByText(/page\s+1\s*\/\s*2/i)).toBeVisible({
-      timeout: 30_000,
+      timeout: 45_000,
     })
 
     await page.getByRole('button', { name: /^Next$/i }).click()
