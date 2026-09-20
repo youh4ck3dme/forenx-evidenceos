@@ -10,11 +10,19 @@ export const MISTRAL_OCR_URL = 'https://api.mistral.ai/v1/ocr'
 export const MAX_ANALYZE_BYTES = 1_500_000
 export const MAX_OCR_BYTES = 4_000_000
 
+/** Soft per-isolate limits (resets on cold start — best-effort abuse brake). */
+export const RATE_LIMIT_ANALYZE = { windowMs: 60_000, max: 20 }
+export const RATE_LIMIT_OCR = { windowMs: 60_000, max: 8 }
+export const RATE_LIMIT_PROBE = { windowMs: 60_000, max: 60 }
+
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'Cache-Control': 'no-store',
   'Referrer-Policy': 'no-referrer',
 }
+
+type Bucket = { resetAt: number; count: number }
+const rateBuckets = new Map<string, Bucket>()
 
 export function jsonResponse(
   data: unknown,
@@ -46,6 +54,113 @@ export function missingKey(): Response {
 
 export function payloadTooLarge(): Response {
   return jsonResponse({ error: 'Payload too large' }, 413)
+}
+
+export function forbiddenOrigin(): Response {
+  return jsonResponse({ error: 'Forbidden origin' }, 403)
+}
+
+export function rateLimited(retryAfterSec: number): Response {
+  return jsonResponse(
+    { error: 'Rate limit exceeded' },
+    429,
+    { 'Retry-After': String(retryAfterSec) },
+  )
+}
+
+/** Extract client IP from common Edge / proxy headers. */
+export function clientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  if (forwarded) {
+    const first = forwarded.split(',')[0]?.trim()
+    if (first) return first
+  }
+  const realIp = request.headers.get('x-real-ip')?.trim()
+  if (realIp) return realIp
+  return 'unknown'
+}
+
+/**
+ * Same-origin gate for browser SPA calls.
+ * Allows matching Origin, matching Referer origin, or Sec-Fetch-Site same-origin.
+ * Rejects cross-site Origin/Referer. Tools (curl) must send Origin: <app origin>.
+ */
+export function assertSameOrigin(request: Request): Response | null {
+  const url = new URL(request.url)
+  const originHeader = request.headers.get('origin')
+  const referer = request.headers.get('referer')
+  const secFetchSite = request.headers.get('sec-fetch-site')
+
+  if (originHeader) {
+    try {
+      if (new URL(originHeader).origin === url.origin) return null
+    } catch {
+      /* invalid origin */
+    }
+    return forbiddenOrigin()
+  }
+
+  if (referer) {
+    try {
+      if (new URL(referer).origin === url.origin) return null
+    } catch {
+      /* invalid referer */
+    }
+    return forbiddenOrigin()
+  }
+
+  // Modern browsers on same-origin POST usually send Origin; if missing,
+  // accept only explicit same-origin fetch metadata (not cross-site).
+  if (secFetchSite === 'same-origin') return null
+
+  // No Origin/Referer/Sec-Fetch-Site — treat as non-browser tooling without proof.
+  return forbiddenOrigin()
+}
+
+/**
+ * Fixed-window rate limit per key (IP + route class).
+ * Returns null when allowed, or a 429 Response.
+ */
+export function checkRateLimit(
+  key: string,
+  limit: { windowMs: number; max: number },
+  now = Date.now(),
+): Response | null {
+  const existing = rateBuckets.get(key)
+  if (!existing || now >= existing.resetAt) {
+    rateBuckets.set(key, { resetAt: now + limit.windowMs, count: 1 })
+    return null
+  }
+  if (existing.count >= limit.max) {
+    const retryAfterSec = Math.max(1, Math.ceil((existing.resetAt - now) / 1000))
+    return rateLimited(retryAfterSec)
+  }
+  existing.count += 1
+  return null
+}
+
+/** Test helper — clear isolate buckets. */
+export function resetRateLimitBucketsForTests(): void {
+  rateBuckets.clear()
+}
+
+export type AiRouteKind = 'analyze' | 'ocr' | 'probe'
+
+export function guardAiRequest(
+  request: Request,
+  kind: AiRouteKind,
+): Response | null {
+  const originBlock = assertSameOrigin(request)
+  if (originBlock) return originBlock
+
+  const ip = clientIp(request)
+  const limit =
+    kind === 'ocr'
+      ? RATE_LIMIT_OCR
+      : kind === 'probe'
+        ? RATE_LIMIT_PROBE
+        : RATE_LIMIT_ANALYZE
+  return checkRateLimit(`${kind}:${ip}`, limit)
 }
 
 export async function readJsonBody(
@@ -112,6 +227,7 @@ export async function proxyMistral(
     })
     const text = await upstream.text()
     // Never forward upstream auth headers; body is opaque JSON only.
+    // Never include apiKey in any response body.
     return new Response(text, {
       status: upstream.status,
       headers: {

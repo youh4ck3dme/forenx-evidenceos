@@ -4,6 +4,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
+  "regions": ["fra1"],
   "rewrites": [
     {
       "source": "/((?!api/|assets/|.*\\..*).*)",

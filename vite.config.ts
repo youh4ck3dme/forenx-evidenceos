@@ -15,6 +15,8 @@ function mistralApiPlugin(env: Record<string, string>): Plugin {
         if (!req.url?.startsWith('/api/ai/')) return next()
 
         const apiKey = env.MISTRAL_API_KEY || process.env.MISTRAL_API_KEY
+        const isOcr = req.url.includes('/ocr')
+        const maxBytes = isOcr ? 4_000_000 : 1_500_000
 
         try {
           const chunks: Buffer[] = []
@@ -22,7 +24,7 @@ function mistralApiPlugin(env: Record<string, string>): Plugin {
             chunks.push(Buffer.from(chunk))
           }
           const bodyText = Buffer.concat(chunks).toString('utf8')
-          if (bodyText.length > 4_000_000) {
+          if (bodyText.length > maxBytes) {
             res.statusCode = 413
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify({ error: 'Payload too large' }))
@@ -56,8 +58,6 @@ function mistralApiPlugin(env: Record<string, string>): Plugin {
             )
             return
           }
-
-          const isOcr = req.url.includes('/ocr')
 
           const mistralUrl = isOcr
             ? 'https://api.mistral.ai/v1/ocr'

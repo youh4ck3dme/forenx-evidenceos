@@ -7,7 +7,10 @@
 import { chromium } from 'playwright'
 import path from 'node:path'
 import fs from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
+const ROOT = path.dirname(fileURLToPath(import.meta.url)) + '/..'
 const BASE = process.env.FORENX_BASE_URL ?? 'http://127.0.0.1:5173'
 const FIXTURE = '/tmp/forenx-fixtures/invoice_sample.txt'
 const OUT = '/opt/cursor/artifacts'
@@ -296,6 +299,21 @@ async function main() {
   console.log('REGRESSION_OK')
   await browser.close()
 }
+
+const guards = spawnSync(
+  process.execPath,
+  ['--experimental-strip-types', 'scripts/test-abuse-guards.mjs'],
+  {
+    cwd: ROOT,
+    encoding: 'utf8',
+  },
+)
+if (guards.status !== 0) {
+  console.error(guards.stdout)
+  console.error(guards.stderr)
+  process.exit(guards.status || 1)
+}
+console.log(guards.stdout.trim())
 
 main().catch((err) => {
   console.error(err)

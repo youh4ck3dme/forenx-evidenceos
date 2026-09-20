@@ -9,6 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "smoke": "node scripts/smoke.mjs",
+    "test:guards": "node --experimental-strip-types scripts/test-abuse-guards.mjs",
+    "smoke:live": "node scripts/live-smoke.mjs",
     "test:e2e": "node scripts/regression.mjs"
   },
   "dependencies": {

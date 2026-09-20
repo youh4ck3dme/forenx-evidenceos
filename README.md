@@ -25,8 +25,9 @@ Optional: without a key, the UI uses the mock AI provider after user-triggered r
 
 ```bash
 npm run build
+npm run test:guards    # same-origin + rate-limit unit checks
 npm run test:e2e
-LIVE_AI=1 npm run test:e2e   # optional live probe
+LIVE_AI=1 npm run test:e2e   # optional live probe (local)
 ```
 
 ## Architecture
@@ -40,45 +41,67 @@ No auth. No production database.
 
 ## Deploy on Vercel (production)
 
-### Exact UI clicks
+### Exact UI clicks → production URL
 
-1. [vercel.com](https://vercel.com) → **Add New…** → **Project** → **Import** Git repository.
-2. Select the repo. If the app lives in a subfolder, set **Root Directory** → `forenx-evidence-os`.
-3. Framework Preset should detect **Vite** (also defined in `vercel.json`).
-4. Confirm **Build Command** `npm run build` and **Output Directory** `dist`.
-5. **Environment Variables** → Add `MISTRAL_API_KEY` for Production (and Preview if needed).  
-   Do **not** add `VITE_MISTRAL_API_KEY`.
-6. **Deploy**.
-7. Optional but recommended without auth: Project → **Settings** → **Deployment Protection** on Preview (and Production if the app must not be a public AI proxy).
+1. Push `forenx-evidence-os` to GitHub/GitLab.
+2. [vercel.com](https://vercel.com) → **Add New…** → **Project** → **Import** the repo.
+3. **Root Directory**: `forenx-evidence-os` if the app is in a monorepo subfolder; otherwise leave as repo root.
+4. Framework Preset: **Vite** (`vercel.json` also sets build/output).
+5. Confirm **Build Command** `npm run build`, **Output Directory** `dist`.
+6. **Settings → Environment Variables** → Add `MISTRAL_API_KEY` for **Production** (and Preview if desired).  
+   Never add `VITE_MISTRAL_API_KEY`.
+7. **Deploy** → copy the production URL (e.g. `https://forenx-….vercel.app`).
+8. **Strongly recommended** without auth: **Settings → Deployment Protection** on Preview (and Production if the app must not be a public AI proxy).
+
+Region: `fra1` (see `vercel.json`). OCR stays on Edge with a **4 MiB** JSON body ceiling (no serverless memory knob on Edge).
+
+### Live smoke (after deploy)
+
+```bash
+FORENX_BASE_URL=https://YOUR-APP.vercel.app npm run smoke:live
+```
+
+Checks:
+
+- evil `Origin` → `403`
+- `{ "probe": true }` on `/api/ai/analyze` and `/api/ai/ocr` → `{ ok, mode: "live" }` when key is set
+- analyze proxy does not echo secrets
+- UI confirm-gated analyze/OCR still need a quick manual browser pass
 
 ### Checklist after deploy
 
 - [ ] Welcome loads (SK default), Justicia icon + PWA installable
-- [ ] `POST /api/ai/analyze` with `{ "probe": true }` → `{ ok, mode }` (no Mistral call)
-- [ ] Analyze only after user click + confirm dialog
-- [ ] Offline / missing key does not fake success
+- [ ] `npm run smoke:live` passes
+- [ ] Browser: Auto Triage → confirm → result; Cancel/Esc → no network analyze
+- [ ] Browser: image → OCR & Structure → confirm → OCR derived text
+- [ ] Offline / missing key does not fake LIVE success
+- [ ] Deployment Protection enabled (or abuse risk accepted)
 
 ### What Vercel serves
 
 | Path | Behavior |
 |------|----------|
 | `/` + SPA routes | Static `dist/` + rewrite to `index.html` |
-| `POST /api/ai/analyze` | Edge proxy → Mistral chat |
-| `POST /api/ai/ocr` | Edge proxy → Mistral OCR |
+| `POST /api/ai/analyze` | Edge proxy → Mistral chat (same-origin + rate limit) |
+| `POST /api/ai/ocr` | Edge proxy → Mistral OCR (same-origin + rate limit) |
 | `POST` with `{ "probe": true }` | Status only — no upstream call |
+
+**Abuse controls (Edge):**
+
+- Same-origin: `Origin` / `Referer` must match app origin (or `Sec-Fetch-Site: same-origin`)
+- Rate limits (per IP, soft / per-isolate): analyze 20/min, OCR 8/min, probe 60/min
+- Body ceilings: analyze ~1.5 MiB, OCR ~4 MiB
+- No CORS ACAO; secrets never echoed
 
 PWA caches the app shell; `/api/*` is **NetworkOnly** (no fake offline AI success).  
 Security headers (incl. CSP allowing workers/fonts) are in `vercel.json`.
 
 ## Next polish passes (copy-paste prompty)
 
-See [`docs/POLISH_PROMPTS.md`](docs/POLISH_PROMPTS.md) for:
-
-1. **Prompt 1** — product polish (OCR wiring, i18n leftovers, empty states, regression).
-2. **Prompt 2** — Vercel tip-top re-audit / hardening checklist.
+See [`docs/POLISH_PROMPTS.md`](docs/POLISH_PROMPTS.md).
 
 ## Security notes
 
 - Evidence content is untrusted data (prompt-injection isolation in AI prompts).
 - Originals are never mutated; AI output is a derived artifact.
-- Without authentication, treat a public AI proxy as a paid-abuse risk.
+- Without authentication, treat a public AI proxy as a paid-abuse risk even with rate limits.
