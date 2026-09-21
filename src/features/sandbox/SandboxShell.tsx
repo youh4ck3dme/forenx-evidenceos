@@ -39,8 +39,8 @@ export function SandboxShell() {
   }, [pingAi]);
 
   return (
-    <div className="flex h-dvh w-full max-w-none min-h-0 flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex h-11 w-full shrink-0 items-center gap-2 border-b border-border bg-surface px-2 lg:hidden">
+    <div className="flex h-[100svh] max-h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex min-h-11 w-full shrink-0 items-center gap-2 border-b border-border bg-surface px-2 pt-[env(safe-area-inset-top,0px)] lg:hidden">
         <Button size="icon-sm" variant="ghost" onClick={() => setLeftOpen(true)} aria-label="Otvoriť panel prípadu">
           <Menu className="size-4" />
         </Button>
@@ -67,12 +67,12 @@ export function SandboxShell() {
       <WorkspaceDialogs />
 
       <Sheet open={leftOpen} onOpenChange={setLeftOpen}>
-        <SheetContent side="left" className="h-dvh w-full max-w-none rounded-none p-0">
+        <SheetContent side="left" className="p-0">
           <LeftSidebar />
         </SheetContent>
       </Sheet>
       <Sheet open={rightOpen} onOpenChange={setRightOpen}>
-        <SheetContent side="right" className="h-dvh w-full max-w-none rounded-none p-0">
+        <SheetContent side="right" className="p-0">
           <AiPanel />
         </SheetContent>
       </Sheet>
