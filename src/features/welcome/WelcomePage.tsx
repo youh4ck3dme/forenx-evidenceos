@@ -14,10 +14,10 @@ export function WelcomePage() {
   }
 
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-background text-foreground">
+    <main className="relative flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-background text-foreground">
       <div className="lab-grid pointer-events-none absolute inset-0 opacity-70" />
-      <div className="pointer-events-none absolute inset-x-8 top-8 bottom-8 border border-border/80 max-md:inset-3" />
-      <div className="relative flex flex-1 flex-col justify-between px-10 py-8 max-md:px-5">
+      <div className="pointer-events-none absolute inset-px border border-border/80" />
+      <div className="relative flex min-h-0 flex-1 flex-col justify-between px-5 py-6 md:px-10 md:py-8">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="grid size-8 place-items-center border border-border font-mono text-xs tracking-widest">
@@ -35,7 +35,7 @@ export function WelcomePage() {
           </div>
         </header>
 
-        <section className="mx-auto flex w-full max-w-3xl flex-col items-start gap-8 py-16 max-md:py-10">
+        <section className="mx-auto flex w-full max-w-3xl flex-col items-start gap-8 py-10 md:py-16">
           <p className="font-mono text-xs tracking-widest text-accent uppercase">Forenzné pracovisko</p>
           <h1 className="font-display text-4xl leading-none font-medium tracking-tight text-foreground max-md:text-3xl">
             FORENX
