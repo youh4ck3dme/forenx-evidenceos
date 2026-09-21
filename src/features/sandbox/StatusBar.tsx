@@ -1,14 +1,14 @@
-import { Hash, Plus, ScrollText, Search, Shield } from "lucide-react";
-import { useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { Download, Hash, Plus, ScrollText, Search } from "lucide-react";
+import { useRef, type ReactNode } from "react";
 import { ThemeSwitch } from "@/features/theme/ThemeSwitch";
 import { selectSelectedEvidence, useWorkspace } from "@/features/workspace/store";
 import { skCount } from "@/lib/copy";
-import { formatBytes, shortHash } from "@/lib/utils";
+import { cn, formatBytes, shortHash } from "@/lib/utils";
 
 export function StatusBar() {
   const inputRef = useRef<HTMLInputElement>(null);
   const importFiles = useWorkspace((s) => s.importFiles);
+  const exportCase = useWorkspace((s) => s.exportCase);
   const setCommandOpen = useWorkspace((s) => s.setCommandOpen);
   const setAuditOpen = useWorkspace((s) => s.setAuditOpen);
   const auditCount = useWorkspace((s) => s.audit.length);
@@ -21,7 +21,7 @@ export function StatusBar() {
   const warn = ratio > 0.8;
 
   return (
-    <footer className="flex h-11 shrink-0 items-center gap-2 border-t border-border bg-surface px-2 text-2xs max-md:overflow-x-auto">
+    <footer className="shrink-0 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">
       <input
         ref={inputRef}
         type="file"
@@ -33,31 +33,68 @@ export function StatusBar() {
           if (files.length) void importFiles(files);
         }}
       />
-      <Button size="sm" variant="outline" className="h-8" onClick={() => inputRef.current?.click()} disabled={ingestBusy}>
-        <Plus className="size-3.5" />
-        Pridať dôkaz
-      </Button>
-      <Button size="sm" variant="ghost" className="h-8" onClick={() => setCommandOpen(true)}>
-        <Search className="size-3.5" />
-        <span className="max-md:hidden">Príkazy</span>
-        <kbd className="ml-1 hidden rounded-sm border border-border px-1 font-mono text-2xs text-subtle md:inline">⌘K</kbd>
-      </Button>
-      <div className="mx-1 hidden h-4 w-px bg-border md:block" />
-      <span className="flex items-center gap-1.5 font-mono text-muted-foreground">
-        <Hash className="size-3" />
-        {selected ? shortHash(selected.sha256, 8) : "žiadny súbor"}
-      </span>
-      <button type="button" className="ml-auto flex items-center gap-1.5 px-2 text-muted-foreground hover:text-foreground" onClick={() => setAuditOpen(true)}>
-        <ScrollText className="size-3" />
-        Záznam {auditCount}
-      </button>
-      <span className={`flex items-center gap-1.5 font-mono ${warn ? "text-warn" : "text-muted-foreground"}`}>
-        <Shield className="size-3" />
-        {formatBytes(storageUsed)}
-        {storageQuota ? ` / ${formatBytes(storageQuota)}` : ""}
-        <span className="text-subtle">· {skCount(evidenceCount, "položka", "položky", "položiek")}</span>
-      </span>
-      <ThemeSwitch />
+      <div className="flex h-5 items-center justify-center gap-2 px-3 font-mono text-[10px] text-muted-foreground">
+        <span className="inline-flex min-w-0 items-center gap-1 truncate">
+          <Hash className="size-3 shrink-0" />
+          {selected ? shortHash(selected.sha256, 10) : "hash —"}
+        </span>
+        <span className="text-subtle">·</span>
+        <span className={cn("shrink-0", warn && "text-warn")}>
+          {formatBytes(storageUsed)}
+          {storageQuota ? ` / ${formatBytes(storageQuota)}` : ""}
+        </span>
+        <span className="text-subtle">·</span>
+        <span className="shrink-0">{skCount(evidenceCount, "položka", "položky", "položiek")}</span>
+      </div>
+      <nav
+        aria-label="Hlavné menu"
+        className="mx-auto grid h-16 w-full max-w-3xl grid-cols-5 items-center justify-items-center px-1 md:h-14"
+      >
+        <DockButton
+          label="Pridať"
+          disabled={ingestBusy}
+          onClick={() => inputRef.current?.click()}
+        >
+          <Plus className="size-5" strokeWidth={1.75} />
+        </DockButton>
+        <DockButton label="Príkazy" onClick={() => setCommandOpen(true)}>
+          <Search className="size-5" strokeWidth={1.75} />
+        </DockButton>
+        <DockButton label={`Záznam ${auditCount}`} onClick={() => setAuditOpen(true)}>
+          <ScrollText className="size-5" strokeWidth={1.75} />
+        </DockButton>
+        <DockButton label="Export" onClick={() => void exportCase("markdown")}>
+          <Download className="size-5" strokeWidth={1.75} />
+        </DockButton>
+        <div className="flex min-h-11 w-full flex-col items-center justify-center gap-0.5">
+          <ThemeSwitch className="h-8" />
+          <span className="text-[11px] leading-none text-foreground">Téma</span>
+        </div>
+      </nav>
     </footer>
+  );
+}
+
+function DockButton({
+  label,
+  children,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex min-h-11 w-full flex-col items-center justify-center gap-0.5 text-foreground disabled:opacity-40"
+    >
+      {children}
+      <span className="max-w-full truncate px-0.5 text-[11px] leading-none">{label}</span>
+    </button>
   );
 }
