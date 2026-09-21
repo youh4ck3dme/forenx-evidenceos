@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import type { AiAvailability } from "@/domain/types";
 import { FORENSIC_ACTIONS, getAction } from "@/lib/ai/actions";
 import { useWorkspace } from "@/features/workspace/store";
 import { EPISTEMIC_LABEL, REVIEW_LABEL, RUN_STATUS_LABEL, enumLabel, skCount } from "@/lib/copy";
@@ -98,14 +99,18 @@ export function AiPanel() {
   );
 }
 
-function AiStatus({ availability }: { availability: string }) {
-  const map = {
-    LIVE: { label: "Grok pripojené", variant: "live" as const, pulse: true },
-    RUNNING: { label: "Prebieha analýza", variant: "live" as const, pulse: true },
-    OFFLINE: { label: "Bez pripojenia", variant: "warn" as const, pulse: false },
-    UNAVAILABLE: { label: "Nedostupné", variant: "danger" as const, pulse: false },
-  };
-  const item = map[availability as keyof typeof map] ?? map.UNAVAILABLE;
+const AI_STATUS: Record<
+  AiAvailability,
+  { label: string; variant: "live" | "warn" | "danger"; pulse: boolean }
+> = {
+  LIVE: { label: "Mistral pripojené", variant: "live", pulse: true },
+  RUNNING: { label: "Prebieha analýza", variant: "live", pulse: true },
+  OFFLINE: { label: "Bez pripojenia", variant: "warn", pulse: false },
+  UNAVAILABLE: { label: "Mistral nedostupné", variant: "danger", pulse: false },
+};
+
+function AiStatus({ availability }: { availability: AiAvailability }) {
+  const item = AI_STATUS[availability];
   return (
     <Badge variant={item.variant} className="gap-1.5">
       <Circle className={cn("size-2 fill-current", item.pulse && "animate-pulse")} />

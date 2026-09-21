@@ -35,18 +35,18 @@ export interface AnalyzeEvidenceFailure {
 
 export type AnalyzeEvidenceResult = AnalyzeEvidenceSuccess | AnalyzeEvidenceFailure;
 
-const MODEL = "grok-4.5";
+const MODEL = "mistral-large-latest";
 const MAX_CHARS_PER_ITEM = 8000;
 const MAX_ITEMS = 6;
 
 export const getAiStatus = createServerFn({ method: "POST" }).handler(async () => {
-  return { available: Boolean(process.env.XAI_API_KEY) };
+  return { available: Boolean(process.env.MISTRAL_API_KEY) };
 });
 
 export const analyzeEvidence = createServerFn({ method: "POST" })
   .validator((input: AnalyzeEvidenceInput) => input)
   .handler(async ({ data }): Promise<AnalyzeEvidenceResult> => {
-    const apiKey = process.env.XAI_API_KEY;
+    const apiKey = process.env.MISTRAL_API_KEY;
     if (!apiKey) {
       return { ok: false, error: "Služba AI v tomto prostredí nie je dostupná.", code: "NO_KEY" };
     }
@@ -103,7 +103,7 @@ export const analyzeEvidence = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join("\n\n");
 
-    const res = await fetch("https://api.x.ai/v1/chat/completions", {
+    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
