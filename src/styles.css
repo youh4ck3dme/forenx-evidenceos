@@ -118,10 +118,10 @@ html[data-theme="light"] {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    min-height: 100svh;
-    height: 100svh;
-    height: 100dvh;
-    min-height: -webkit-fill-available;
+    position: fixed;
+    inset: 0;
+    height: 100%;
+    min-height: 100%;
   }
 
   body {

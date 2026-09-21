@@ -13,6 +13,7 @@ node_modules
 dist
 screenshots
 artifacts
+attachments
 *.log
 .cache
 coverage

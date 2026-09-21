@@ -1,4 +1,5 @@
 import { FileSearch, Files, ListTree, Plus, ScrollText, Users } from "lucide-react";
+import { useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,13 @@ const NAV: Array<{ id: LeftView; label: string; icon: typeof Files }> = [
   { id: "reports", label: "Správy", icon: ScrollText },
 ];
 
-export function LeftSidebar() {
+export function LeftSidebar({
+  onEvidencePicked,
+  onOpenAi,
+}: {
+  onEvidencePicked?: () => void;
+  onOpenAi?: () => void;
+} = {}) {
   const active = useWorkspace(selectActiveCase);
   const cases = useWorkspace((s) => s.cases);
   const setActiveCase = useWorkspace((s) => s.setActiveCase);
@@ -50,6 +57,8 @@ export function LeftSidebar() {
     reports: reportCount,
   };
 
+  const showSearch = evidence.length > 0 || searchQuery.trim().length > 0;
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
       <div className="border-b border-border px-3 py-3">
@@ -70,7 +79,7 @@ export function LeftSidebar() {
         ) : null}
         {cases.length > 1 ? (
           <select
-            className="mt-3 h-8 w-full rounded-md border border-border bg-elevated px-2 font-mono text-2xs"
+            className="mt-3 h-11 w-full rounded-md border border-border bg-elevated px-2 font-mono text-2xs"
             value={active?.id}
             onChange={(e) => void setActiveCase(e.target.value)}
           >
@@ -83,15 +92,17 @@ export function LeftSidebar() {
         ) : null}
       </div>
 
-      <div className="px-3 py-2">
-        <Input
-          data-search="evidence"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Hľadať súbory, text, entity…"
-          className="h-8 text-xs"
-        />
-      </div>
+      {showSearch ? (
+        <div className="px-3 py-2">
+          <Input
+            data-search="evidence"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Hľadať súbory, text, entity…"
+            className="h-11 text-xs"
+          />
+        </div>
+      ) : null}
 
       <nav className="grid grid-cols-1 gap-px px-2 pb-2">
         {NAV.map((item) => (
@@ -100,7 +111,7 @@ export function LeftSidebar() {
             type="button"
             onClick={() => setLeftView(item.id)}
             className={cn(
-              "flex h-9 items-center justify-between rounded-md px-2 text-xs",
+              "flex min-h-11 items-center justify-between rounded-md px-2 text-xs",
               leftView === item.id ? "bg-elevated text-foreground" : "text-muted-foreground hover:bg-elevated/60",
             )}
           >
@@ -108,7 +119,11 @@ export function LeftSidebar() {
               <item.icon className="size-3.5" />
               {item.label}
             </span>
-            <span className="font-mono text-2xs tabular-nums text-subtle">{counts[item.id]}</span>
+            {counts[item.id] > 0 ? (
+              <span className="font-mono text-2xs tabular-nums text-subtle">{counts[item.id]}</span>
+            ) : (
+              <span className="font-mono text-2xs tabular-nums text-subtle/40">0</span>
+            )}
           </button>
         ))}
       </nav>
@@ -119,13 +134,16 @@ export function LeftSidebar() {
             evidence={evidence}
             selectedId={selectedId}
             query={searchQuery}
-            onSelect={(id, additive) => selectEvidence(id, additive)}
+            onSelect={(id, additive) => {
+              selectEvidence(id, additive);
+              onEvidencePicked?.();
+            }}
           />
         ) : null}
         {leftView === "timeline" ? <TimelineList query={searchQuery} /> : null}
         {leftView === "entities" ? <EntityList query={searchQuery} /> : null}
         {leftView === "findings" ? <FindingList query={searchQuery} /> : null}
-        {leftView === "reports" ? <ReportList /> : null}
+        {leftView === "reports" ? <ReportList onOpenAi={onOpenAi} /> : null}
       </ScrollArea>
     </div>
   );
@@ -143,6 +161,9 @@ function EvidenceList({
   onSelect: (id: string, additive?: boolean) => void;
 }) {
   const extractions = useWorkspace((s) => s.extractions);
+  const importFiles = useWorkspace((s) => s.importFiles);
+  const ingestBusy = useWorkspace((s) => s.ingestBusy);
+  const inputRef = useRef<HTMLInputElement>(null);
   const q = query.trim().toLowerCase();
   const filtered = q
     ? evidence.filter((item) => {
@@ -165,7 +186,36 @@ function EvidenceList({
   }
 
   if (filtered.length === 0) {
-    return <p className="px-4 py-8 text-center text-xs text-muted-foreground">V tomto prípade zatiaľ nie sú žiadne dôkazy.</p>;
+    return (
+      <div className="space-y-3 px-4 py-8 text-center">
+        <p className="text-xs text-muted-foreground">
+          {q ? "Žiadny dôkaz nezodpovedá hľadaniu." : "V tomto prípade zatiaľ nie sú žiadne dôkazy."}
+        </p>
+        {!q ? (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              className="hidden"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                e.target.value = "";
+                if (files.length) void importFiles(files);
+              }}
+            />
+            <Button
+              size="sm"
+              className="w-full"
+              disabled={ingestBusy}
+              onClick={() => inputRef.current?.click()}
+            >
+              Vložiť dôkaz
+            </Button>
+          </>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -181,7 +231,7 @@ function EvidenceList({
               type="button"
               onClick={(e) => onSelect(item.id, e.metaKey || e.ctrlKey)}
               className={cn(
-                "flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left",
+                "flex min-h-11 w-full flex-col items-start justify-center gap-0.5 px-3 py-2 text-left",
                 selectedId === item.id ? "bg-elevated" : "hover:bg-elevated/50",
               )}
             >
@@ -259,15 +309,22 @@ function FindingList({ query }: { query: string }) {
   );
 }
 
-function ReportList() {
+function ReportList({ onOpenAi }: { onOpenAi?: () => void }) {
   const aiRuns = useWorkspace((s) => s.aiRuns);
   const exportCase = useWorkspace((s) => s.exportCase);
   const runs = aiRuns.filter((r) => r.actionId === "case-report");
   if (!runs.length) {
     return (
       <div className="space-y-3 p-4">
-        <Empty label="Zatiaľ nie je žiadna správa o prípade. Spustite ju v paneli AI." />
-        <Button variant="outline" size="sm" className="w-full" onClick={() => void exportCase("markdown")}>
+        <Empty label="Zatiaľ nie je žiadna správa o prípade." />
+        {onOpenAi ? (
+          <Button variant="outline" size="sm" className="w-full min-h-11" onClick={onOpenAi}>
+            Otvoriť panel AI
+          </Button>
+        ) : (
+          <p className="text-center text-xs text-muted-foreground">Spustite ju v paneli AI vpravo.</p>
+        )}
+        <Button variant="outline" size="sm" className="w-full min-h-11" onClick={() => void exportCase("markdown")}>
           Exportovať zoznam dôkazov (Markdown)
         </Button>
       </div>
