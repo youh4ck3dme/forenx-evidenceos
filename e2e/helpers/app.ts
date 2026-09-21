@@ -39,16 +39,18 @@ export async function bootSandbox(
 
   await page.waitForURL('**/sandbox')
   await expect(
-    page.getByRole('button', { name: /\+ Add Evidence|\+ Pridať dôkaz/i }),
+    page.getByRole('button', { name: /Add evidence|Pridať dôkaz/i }),
   ).toBeVisible({ timeout: 20_000 })
 
-  // Prefer EN for stable selectors in most journeys
+  // Language lives in Cases/AI drawers on mobile (dock has no Lang control).
   if (opts.locale !== 'sk') {
-    const enBtn = page.getByRole('button', { name: /^EN$/i }).last()
-    if (await enBtn.isVisible().catch(() => false)) {
-      await enBtn.click()
-      await expect(page.getByRole('button', { name: /\+ Add Evidence/i })).toBeVisible()
-    }
+    await page.getByRole('button', { name: /^Cases$|^Prípady$/i }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.getByRole('dialog').getByRole('button', { name: /^EN$/i }).click()
+    await expect(page.getByRole('dialog').getByRole('button', { name: /^New$/i })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toBeHidden()
+    await expect(page.getByRole('button', { name: /Add evidence/i })).toBeVisible()
   }
 
   return counters

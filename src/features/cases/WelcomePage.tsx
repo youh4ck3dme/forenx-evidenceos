@@ -30,7 +30,7 @@ export function WelcomePage() {
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-6 py-6 text-center">
         <img
-          src="/forenx-icon-512.png"
+          src="/icons/icon-512.png"
           alt=""
           className="mb-6 h-14 w-14 rounded-[18%] shadow-[0_12px_40px_rgb(0_0_0/0.18)] opacity-0 animate-[fadeIn_0.6s_ease_forwards] md:mb-8 md:h-20 md:w-20"
           style={{ animationDelay: '40ms' }}

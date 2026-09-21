@@ -13,7 +13,8 @@
     "smoke:live": "node scripts/live-smoke.mjs",
     "test:e2e": "node scripts/regression.mjs",
     "test:e2e:pwa": "playwright test --project=iphone-14-plus-pwa",
-    "test:e2e:all": "npm run test:guards && npm run test:e2e && npm run test:e2e:pwa"
+    "test:e2e:all": "npm run test:guards && npm run test:e2e && npm run test:e2e:pwa",
+    "test:pwa-branding": "node scripts/test-pwa-branding.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
@@ -50,8 +51,6 @@
     "playwright": "^1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0",
-    "vite-plugin-pwa": "^1.3.0",
-    "workbox-window": "^7.4.1"
+    "vite": "^8.3.0"
   }
 }

@@ -13,7 +13,7 @@ export function applyTheme(theme: ThemeMode) {
   document.documentElement.dataset.theme = theme
   document.documentElement.classList.toggle('dark', theme === 'dark')
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', theme === 'light' ? '#e8ecf1' : '#0a0b0d')
+  if (meta) meta.setAttribute('content', theme === 'light' ? '#e8ecf1' : '#0b0d10')
 }
 
 export function getTheme(): ThemeMode {

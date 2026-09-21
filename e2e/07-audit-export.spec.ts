@@ -6,10 +6,12 @@ test.describe('07 audit export', () => {
     await bootSandbox(page)
     await importFile(page, FIXTURES.invoice)
 
-    await page.getByRole('button', { name: /^JSON$/i }).click()
-    await page.getByRole('button', { name: /^MD$/i }).click()
+    await page.getByRole('button', { name: /^Export$/i }).click()
+    await page.getByRole('menuitem', { name: /^JSON$/i }).click()
+    await page.getByRole('button', { name: /^Export$/i }).click()
+    await page.getByRole('menuitem', { name: /^MD$/i }).click()
 
-    await page.getByRole('button', { name: /Audit/i }).click()
+    await page.getByRole('button', { name: /Audit log|Záznam/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.getByText(/EXPORT_CREATED/i).first()).toBeVisible({
       timeout: 10_000,

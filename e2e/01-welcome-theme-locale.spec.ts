@@ -32,7 +32,7 @@ test.describe('01 welcome theme locale', () => {
     await page.getByRole('button', { name: /Enter Sandbox/i }).click()
     await page.waitForURL('**/sandbox')
     await expect(
-      page.getByRole('button', { name: /\+ Add Evidence/i }),
+      page.getByRole('button', { name: /Add evidence/i }),
     ).toBeVisible({ timeout: 20_000 })
   })
 })

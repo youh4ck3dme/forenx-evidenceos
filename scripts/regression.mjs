@@ -164,15 +164,15 @@ async function main() {
 
   // Persist locale check: switch to EN in sandbox status bar
   await page.getByRole('button', { name: /^EN$/i }).last().click()
-  await page.getByRole('button', { name: /\+ Add Evidence/i }).waitFor()
+  await page.getByRole('button', { name: /Add evidence/i }).waitFor()
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(800)
   assert(
-    await page.getByRole('button', { name: /\+ Add Evidence/i }).isVisible(),
+    await page.getByRole('button', { name: /Add evidence/i }).isVisible(),
     'EN persisted after reload',
   )
   await page.getByRole('button', { name: /^SK$/i }).last().click()
-  await page.getByRole('button', { name: /\+ Pridať dôkaz/i }).waitFor()
+  await page.getByRole('button', { name: /Pridať dôkaz/i }).waitFor()
   console.log('OK locale switch + persist')
 
   // 4) Import evidence
@@ -274,12 +274,14 @@ async function main() {
   await page.getByRole('button', { name: /^Esc$/i }).click()
   console.log('OK command palette')
 
-  // 8) Export JSON + MD audit
-  await page.getByRole('button', { name: /^JSON$/i }).click()
+  // 8) Export JSON + MD audit via dock Export menu
+  await page.getByRole('button', { name: /^Export$/i }).click()
+  await page.getByRole('menuitem', { name: /^JSON$/i }).click()
   await page.waitForTimeout(700)
-  await page.getByRole('button', { name: /^MD$/i }).click()
+  await page.getByRole('button', { name: /^Export$/i }).click()
+  await page.getByRole('menuitem', { name: /^MD$/i }).click()
   await page.waitForTimeout(700)
-  await page.getByRole('button', { name: /Audit/i }).click()
+  await page.getByRole('button', { name: /Audit log|Záznam/i }).click()
   await page.getByText(/EXPORT_CREATED/i).first().waitFor({ timeout: 8000 })
   const auditText = await page.locator('body').innerText()
   assert(/JSON/i.test(auditText) || /exportovaný|Exported/i.test(auditText), 'export audit visible')

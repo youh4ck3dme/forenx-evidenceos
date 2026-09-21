@@ -131,6 +131,14 @@ export const en = {
   'status.storageWarn': ' — approaching limit',
   'status.exportJson': 'JSON',
   'status.exportMd': 'MD',
+  'status.dockLabel': 'Main menu',
+  'status.dock.addEvidence': 'Add evidence',
+  'status.dock.commands': 'Commands',
+  'status.dock.commandsHint': '⌘K',
+  'status.dock.audit': 'Audit log',
+  'status.dock.export': 'Export',
+  'status.dock.theme': 'Theme',
+  'status.itemCount': '{count} items',
 
   'audit.title': 'Audit log',
   'audit.intro':

@@ -39,7 +39,10 @@ test.describe('09 PWA service worker', () => {
     const res = await page.request.get(manifestUrl)
     expect(res.ok()).toBeTruthy()
     const manifest = await res.json()
-    expect(manifest.name || manifest.short_name).toBeTruthy()
+    expect(manifest.name).toMatch(/ForenX/i)
+    expect(manifest.short_name).toBeTruthy()
+    expect(manifest.theme_color).toBe('#0b0d10')
+    expect(manifest.icons?.some((i: { src: string }) => i.src.includes('/icons/'))).toBeTruthy()
     expect(manifest.display).toMatch(/standalone/i)
 
     // NetworkOnly /api: offline POST must fail (not served from SW cache)

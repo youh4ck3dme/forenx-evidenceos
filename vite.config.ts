@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
-import { VitePWA } from 'vite-plugin-pwa'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -97,95 +96,6 @@ export default defineConfig(({ mode }) => {
     react(),
     tailwindcss(),
     mistralApiPlugin(env),
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: false,
-      includeAssets: [
-        'favicon.ico',
-        'favicon.svg',
-        'forenx-icon.png',
-        'forenx-icon-16.png',
-        'forenx-icon-32.png',
-        'forenx-icon-180.png',
-        'forenx-icon-192.png',
-        'forenx-icon-512.png',
-        'forenx-icon-maskable-512.png',
-      ],
-      manifest: {
-        id: '/',
-        name: 'ForenX EvidenceOS',
-        short_name: 'ForenX',
-        description: 'Local-first AI Forensic Workspace',
-        lang: 'sk',
-        dir: 'ltr',
-        theme_color: '#0a0b0d',
-        background_color: '#0a0b0d',
-        display: 'standalone',
-        display_override: ['standalone', 'minimal-ui', 'browser'],
-        orientation: 'any',
-        start_url: '/',
-        scope: '/',
-        categories: ['productivity', 'utilities'],
-        icons: [
-          {
-            src: '/forenx-icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any',
-          },
-          {
-            src: '/forenx-icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any',
-          },
-          {
-            src: '/forenx-icon-maskable-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2}'],
-        // Keep the installable shell lean — large lazy parsers are fetched on demand.
-        globIgnores: ['**/heic2any*', '**/pdf.worker*'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
-            handler: 'NetworkOnly',
-            method: 'POST',
-          },
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
-            handler: 'NetworkOnly',
-            method: 'GET',
-          },
-          {
-            urlPattern: ({ request, url }) =>
-              request.destination === 'image' ||
-              /\.(?:png|svg|ico|jpg|jpeg|webp)$/i.test(url.pathname),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'forenx-images',
-              expiration: {
-                maxEntries: 64,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
-            },
-          },
-        ],
-      },
-      devOptions: {
-        enabled: false,
-      },
-    }),
   ],
   resolve: {
     alias: {

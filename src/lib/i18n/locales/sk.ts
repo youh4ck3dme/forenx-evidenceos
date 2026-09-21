@@ -133,6 +133,14 @@ export const sk: Messages = {
   'status.storageWarn': ' — blíži sa limit',
   'status.exportJson': 'JSON',
   'status.exportMd': 'MD',
+  'status.dockLabel': 'Hlavné menu',
+  'status.dock.addEvidence': 'Pridať dôkaz',
+  'status.dock.commands': 'Príkazy',
+  'status.dock.commandsHint': '⌘K',
+  'status.dock.audit': 'Záznam',
+  'status.dock.export': 'Export',
+  'status.dock.theme': 'Téma',
+  'status.itemCount': '{count} položiek',
 
   'audit.title': 'Auditný denník',
   'audit.intro':
