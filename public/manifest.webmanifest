@@ -1,10 +1,12 @@
 {
   "name": "ForenX EvidenceOS",
   "short_name": "EvidenceOS",
+  "description": "Lokálne forenzné pracovisko. Nemenné originály, SHA-256 a štruktúrovaná AI analýza.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0b0d10",
   "theme_color": "#0b0d10",
   "icons": [
