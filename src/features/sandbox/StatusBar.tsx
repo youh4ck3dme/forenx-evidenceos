@@ -21,7 +21,7 @@ export function StatusBar() {
   const warn = ratio > 0.8;
 
   return (
-    <footer className="shrink-0 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">
+    <footer className="shrink-0 border-t border-border bg-surface pb-[max(0px,env(safe-area-inset-bottom,0px))]">
       <input
         ref={inputRef}
         type="file"
@@ -48,7 +48,7 @@ export function StatusBar() {
       </div>
       <nav
         aria-label="Hlavné menu"
-        className="mx-auto grid h-16 w-full max-w-3xl grid-cols-5 items-center justify-items-center px-1 md:h-14"
+        className="grid h-14 w-full grid-cols-5 items-center justify-items-center px-1 md:h-14"
       >
         <DockButton
           label="Pridať"
