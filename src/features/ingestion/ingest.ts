@@ -5,6 +5,9 @@ import { detectFile, fileExtension } from "@/lib/parsers/detect";
 import { extractEvidence } from "@/lib/parsers/extract";
 import { writeOriginal } from "@/lib/storage/files";
 
+/** Hard cap per blueprint — reject before hashing large blobs. */
+export const MAX_EVIDENCE_BYTES = 8 * 1024 * 1024;
+
 export interface IngestResult {
   evidence: EvidenceRecord;
   extraction: ExtractionRecord | null;
@@ -15,6 +18,15 @@ export async function ingestFile(
   caseId: string,
   existingHashes: Map<string, string>,
 ): Promise<IngestResult> {
+  if (file.size > MAX_EVIDENCE_BYTES) {
+    throw new Error(
+      `Súbor ${file.name} prekračuje limit ${MAX_EVIDENCE_BYTES / (1024 * 1024)} MB (${(file.size / (1024 * 1024)).toFixed(1)} MB).`,
+    );
+  }
+  if (file.size === 0) {
+    throw new Error(`Súbor ${file.name} je prázdny (0 B).`);
+  }
+
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
   const sha256 = await sha256Hex(bytes);
@@ -36,7 +48,9 @@ export async function ingestFile(
     byteSize: file.size,
     sha256,
     importedAt: new Date().toISOString(),
-    originalLastModified: Number.isFinite(file.lastModified) ? new Date(file.lastModified).toISOString() : null,
+    originalLastModified: Number.isFinite(file.lastModified)
+      ? new Date(file.lastModified).toISOString()
+      : null,
     storagePath,
     status: quarantined ? "QUARANTINED" : "HASHED",
     section: detection.kind === "image" ? "MEDIA" : "OTHER",
@@ -47,6 +61,7 @@ export async function ingestFile(
     previewKind: detection.previewKind,
   };
 
+  // Original is always stored first. Quarantined files never get extraction.
   if (quarantined) {
     return { evidence, extraction: null };
   }
