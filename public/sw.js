@@ -97,7 +97,7 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(request)
         if (cached) return cached
         const fresh = await fetch(request)
-        void putAsset(request, fresh)
+        void putAsset(request, fresh.clone())
         return fresh
       })(),
     )
@@ -117,7 +117,7 @@ self.addEventListener('fetch', (event) => {
         if (cached) return cached
         try {
           const fresh = await fetch(request)
-          void putAsset(request, fresh)
+          void putAsset(request, fresh.clone())
           return fresh
         } catch (error) {
           if (cached) return cached
