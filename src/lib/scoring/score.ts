@@ -1,6 +1,6 @@
-import type { EpistemicClass, SourceReference } from "@/domain/types";
+import type { EpistemicClass, ReviewStatus, SourceReference } from "@/domain/types";
 
-export const SCORE_ENGINE_VERSION = "1.0.0";
+export const SCORE_ENGINE_VERSION = "1.1.0";
 
 export const SCORE_MIN = 0.08;
 export const SCORE_MAX = 0.92;
@@ -22,6 +22,26 @@ export interface ScoreInput {
 
 export interface ScoreResult {
   confidence: number;
+  reasons: string[];
+  engineVersion: string;
+}
+
+export type CaseRiskBand = "LOW" | "MODERATE" | "ELEVATED" | "HIGH";
+
+export interface CaseRiskInput {
+  epistemicClass: EpistemicClass;
+  confidence: number;
+  reviewStatus: ReviewStatus;
+  statement: string;
+}
+
+export interface CaseRiskResult {
+  index: number;
+  band: CaseRiskBand;
+  considered: number;
+  rejected: number;
+  anomalies: number;
+  questions: number;
   reasons: string[];
   engineVersion: string;
 }
@@ -124,4 +144,95 @@ export function scoreEvent(input: {
     };
   }
   return scored;
+}
+
+export function scoreQuestion(text: string, evidenceIds: string[]): ScoreResult {
+  return scoreFinding({
+    epistemicClass: "HYPOTHESIS",
+    statement: `Otázka: ${text}`,
+    sourceReferences: [],
+    evidenceIds,
+  });
+}
+
+export function scoreAnomaly(text: string, evidenceIds: string[]): ScoreResult {
+  return scoreFinding({
+    epistemicClass: "INFERRED",
+    statement: `Nezrovnalosť: ${text}`,
+    sourceReferences: [],
+    evidenceIds,
+  });
+}
+
+const CLASS_WEIGHT: Record<EpistemicClass, number> = {
+  OBSERVED: 1,
+  DERIVED: 0.8,
+  INFERRED: 0.6,
+  HYPOTHESIS: 0.25,
+  UNKNOWN: 0.1,
+};
+
+export function bandForIndex(index: number): CaseRiskBand {
+  if (index >= 75) return "HIGH";
+  if (index >= 50) return "ELEVATED";
+  if (index >= 25) return "MODERATE";
+  return "LOW";
+}
+
+/** Case risk is an investigative workload index, not a guilt score. */
+export function scoreCaseRisk(findings: CaseRiskInput[]): CaseRiskResult {
+  const reasons: string[] = [];
+  if (findings.length === 0) {
+    return {
+      index: 0,
+      band: "LOW",
+      considered: 0,
+      rejected: 0,
+      anomalies: 0,
+      questions: 0,
+      reasons: ["empty-case"],
+      engineVersion: SCORE_ENGINE_VERSION,
+    };
+  }
+
+  let mass = 0;
+  let rejected = 0;
+  let considered = 0;
+  let anomalies = 0;
+  let questions = 0;
+
+  for (const f of findings) {
+    if (f.reviewStatus === "REJECTED") {
+      rejected += 1;
+      continue;
+    }
+    considered += 1;
+    const weight = CLASS_WEIGHT[f.epistemicClass] ?? CLASS_WEIGHT.UNKNOWN;
+    mass += f.confidence * weight;
+    if (/^\s*nezrovnalos/i.test(f.statement)) anomalies += 1;
+    if (/^\s*otázka\s*:/i.test(f.statement)) questions += 1;
+  }
+
+  const denom = Math.max(3, considered);
+  let index = (mass / denom) * 100;
+  index += anomalies * 4;
+  index += questions * 2;
+  index = Math.round(Math.min(100, Math.max(0, index)));
+
+  reasons.push(`mass=${mass.toFixed(2)}`);
+  reasons.push(`considered=${considered}`);
+  reasons.push(`rejected=${rejected}`);
+  reasons.push(`anomalies=${anomalies}`);
+  reasons.push(`questions=${questions}`);
+
+  return {
+    index,
+    band: bandForIndex(index),
+    considered,
+    rejected,
+    anomalies,
+    questions,
+    reasons,
+    engineVersion: SCORE_ENGINE_VERSION,
+  };
 }
