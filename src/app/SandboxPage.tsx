@@ -6,6 +6,7 @@ import { AiAnalystPanel } from '@/features/ai/AiAnalystPanel'
 import { StatusBar } from '@/features/audit/StatusBar'
 import { AuditDrawer } from '@/features/audit/AuditDrawer'
 import { CommandPalette } from '@/features/command-palette/CommandPalette'
+import { MalteWorkspace } from '@/features/malte/MalteWorkspace'
 import { localAuditRepository } from '@/lib/storage/repositories'
 import { createId } from '@/lib/utils/cn'
 import { Drawer } from '@/components/ui/drawer'
@@ -24,6 +25,8 @@ export function SandboxPage() {
   const cases = useWorkspaceStore((s) => s.cases)
   const mobilePanel = useWorkspaceStore((s) => s.mobilePanel)
   const setMobilePanel = useWorkspaceStore((s) => s.setMobilePanel)
+  const workspaceMode = useWorkspaceStore((s) => s.workspaceMode)
+  const workspaceId = useWorkspaceStore((s) => s.workspaceId)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { t } = useLocale()
 
@@ -101,15 +104,23 @@ export function SandboxPage() {
         <aside className="hidden h-full w-[260px] shrink-0 overflow-hidden border-r border-fx-border lg:block">
           <CaseSidebar />
         </aside>
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden border-r border-fx-border">
-          <EvidenceViewer
-            evidence={selected}
-            onDropFiles={(files) => void importEvidence(files)}
-          />
-        </main>
-        <aside className="hidden h-full w-[300px] shrink-0 overflow-hidden xl:block">
-          <AiAnalystPanel />
-        </aside>
+        {workspaceMode === 'malte' && activeCaseId ? (
+          <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
+            <MalteWorkspace caseId={activeCaseId} workspaceId={workspaceId} />
+          </main>
+        ) : (
+          <>
+            <main className="min-h-0 min-w-0 flex-1 overflow-hidden border-r border-fx-border">
+              <EvidenceViewer
+                evidence={selected}
+                onDropFiles={(files) => void importEvidence(files)}
+              />
+            </main>
+            <aside className="hidden h-full w-[300px] shrink-0 overflow-hidden xl:block">
+              <AiAnalystPanel />
+            </aside>
+          </>
+        )}
       </div>
 
       <StatusBar onAddEvidence={() => fileInputRef.current?.click()} />
@@ -119,7 +130,7 @@ export function SandboxPage() {
         type="file"
         className="hidden"
         multiple
-        accept=".pdf,.png,.jpg,.jpeg,.jpe,.webp,.heic,.heif,.avif,.docx,.rtf,.md,.txt,.csv,.json,.xml,.html,.htm"
+        accept=".pdf,.png,.jpg,.jpeg,.jpe,.webp,.heic,.heif,.avif,.docx,.rtf,.md,.txt,.csv,.json,.xml,.html,.htm,.xlsx,.xls"
         onChange={(e) => {
           if (e.target.files?.length) void importEvidence(e.target.files)
           e.target.value = ''
@@ -152,7 +163,11 @@ export function SandboxPage() {
           <LanguageSwitcher />
         </div>
         <div className="h-[75dvh]">
-          <AiAnalystPanel />
+          {workspaceMode === 'malte' && activeCaseId ? (
+            <MalteWorkspace caseId={activeCaseId} workspaceId={workspaceId} />
+          ) : (
+            <AiAnalystPanel />
+          )}
         </div>
       </Drawer>
     </div>

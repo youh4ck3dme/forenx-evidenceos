@@ -1,0 +1,9 @@
+Date;Amount;Currency;From;To;Description;CountryFrom;CountryTo;Commodity
+2024-03-01;12500;EUR;Babcan Holding s.r.o.;Arms Trade SK Ltd;Weapon parts invoice W-441;SK;CZ;9301
+2024-03-01;12480;EUR;Arms Trade SK Ltd;Offshore Consulting Ltd;Pass-through advisory fee;CZ;CY;
+2024-03-02;850;EUR;Local Shop a.s.;Cafe Bratislava;Coffee supplies;SK;SK;
+2024-03-05;50000;EUR;Babcan Holding s.r.o.;Shell Trading CY;Cross-border settlement;SK;CY;
+2024-03-05;49800;EUR;Shell Trading CY;Unknown Beneficiary;Serial SN-77821 arms kit;CY;RS;9306
+2024-03-08;2200;EUR;Cafe Bratislava;Local Shop a.s.;Refund;SK;SK;
+2024-03-10;15000;EUR;Babcan Holding s.r.o.;Babcan Holding s.r.o.;Internal transfer;SK;SK;
+2024-03-12;91000;EUR;Unknown Payer;Babcan Holding s.r.o.;Large inbound;AT;SK;

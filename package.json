@@ -14,7 +14,8 @@
     "test:e2e": "node scripts/regression.mjs",
     "test:e2e:pwa": "playwright test --project=iphone-14-plus-pwa",
     "test:e2e:all": "npm run test:guards && npm run test:e2e && npm run test:e2e:pwa",
-    "test:pwa-branding": "node scripts/test-pwa-branding.mjs"
+    "test:pwa-branding": "node scripts/test-pwa-branding.mjs",
+    "test:malte": "node scripts/test-malte-engine.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
@@ -29,6 +30,7 @@
     "cmdk": "^1.1.1",
     "dexie": "^4.4.6",
     "heic2any": "^0.0.4",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.47.0",
     "mammoth": "^1.12.3",
     "marked": "^18.0.13",
@@ -37,6 +39,7 @@
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
     "tailwind-merge": "^3.7.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },

@@ -21,6 +21,10 @@ export function AuditDrawer() {
             <div className="text-sm text-fx-text">{event.message}</div>
             <div className="font-mono text-[10px] text-fx-dim">
               {formatDateTime(event.createdAt)}
+              {event.eventHash ? ` · hash ${event.eventHash.slice(0, 12)}…` : ''}
+              {typeof event.meta?.ruleVersion === 'string'
+                ? ` · ${event.meta.ruleVersion}`
+                : ''}
             </div>
           </li>
         ))}

@@ -201,6 +201,11 @@ export type AuditEventType =
   | 'AI_ANALYSIS_FAILED'
   | 'FINDING_REVIEWED'
   | 'EXPORT_CREATED'
+  | 'MALTE_IMPORT'
+  | 'MALTE_DETECTION_RUN'
+  | 'MALTE_ALERT_REVIEWED'
+  | 'MALTE_REPORT_EXPORTED'
+  | 'MALTE_WEIGHTS_UPDATED'
 
 export interface AuditEvent {
   id: string
@@ -212,6 +217,151 @@ export interface AuditEvent {
   meta?: Record<string, unknown>
   createdBy?: string
   tenantId?: string
+  /** SHA-256 of previous audit event id+type+createdAt+message (chain integrity). */
+  prevHash?: string
+  /** SHA-256 of this event's canonical payload including prevHash. */
+  eventHash?: string
+}
+
+/** Malte — financial investigation domain */
+
+export type SubjectKind =
+  | 'PERSON'
+  | 'COMPANY'
+  | 'SHELL_SUSPECT'
+  | 'ACCOUNT'
+  | 'OTHER'
+
+export interface SubjectRecord {
+  id: string
+  caseId: string
+  workspaceId: string
+  kind: SubjectKind
+  name: string
+  ico?: string
+  country?: string
+  accountIban?: string
+  riskScore: number
+  flags: string[]
+  createdAt: string
+  sourceEvidenceId?: string
+}
+
+export interface TransactionRecord {
+  id: string
+  caseId: string
+  workspaceId: string
+  bookedAt: string
+  amount: number
+  currency: string
+  fromSubjectId?: string
+  toSubjectId?: string
+  fromLabel: string
+  toLabel: string
+  description: string
+  reference?: string
+  countryFrom?: string
+  countryTo?: string
+  commodityCode?: string
+  sourceEvidenceId?: string
+  sourceRow?: number
+  riskScore: number
+  createdAt: string
+}
+
+export interface CommodityRecord {
+  id: string
+  caseId: string
+  workspaceId: string
+  name: string
+  serialNumber?: string
+  licenseNumber?: string
+  category?: string
+  subjectId?: string
+  createdAt: string
+}
+
+export interface RelationshipRecord {
+  id: string
+  caseId: string
+  workspaceId: string
+  fromSubjectId: string
+  toSubjectId: string
+  relationType: string
+  weight: number
+  evidenceIds: string[]
+  createdAt: string
+}
+
+export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+export type AlertStatus = 'NEW' | 'REVIEWED' | 'FALSE_POSITIVE' | 'ESCALATED'
+
+export interface ScoreFactor {
+  code: string
+  label: string
+  weight: number
+  contribution: number
+  evidenceRef?: string
+  sourceRow?: number
+}
+
+export interface AlertRecord {
+  id: string
+  caseId: string
+  workspaceId: string
+  ruleId: string
+  ruleVersion: string
+  title: string
+  description: string
+  severity: AlertSeverity
+  status: AlertStatus
+  score: number
+  factors: ScoreFactor[]
+  subjectIds: string[]
+  transactionIds: string[]
+  assignedTo?: string
+  reviewedAt?: string
+  reviewedBy?: string
+  reviewNote?: string
+  createdAt: string
+  detectionRunId: string
+}
+
+export interface DetectionWeights {
+  shellCompany: number
+  transactionAnomaly: number
+  licenseSerial: number
+  networkChain: number
+  crossBorder: number
+  highValueBurst: number
+}
+
+export interface DetectionRuleConfig {
+  id: string
+  caseId: string
+  workspaceId: string
+  ruleVersion: string
+  weights: DetectionWeights
+  thresholds: {
+    alertMinScore: number
+    highValueAmount: number
+    shellNameHints: string[]
+  }
+  updatedAt: string
+}
+
+export interface DetectionRunRecord {
+  id: string
+  caseId: string
+  workspaceId: string
+  ruleVersion: string
+  startedAt: string
+  completedAt: string
+  alertCount: number
+  subjectCount: number
+  transactionCount: number
+  weightsSnapshot: DetectionWeights
+  inputHash: string
 }
 
 export interface WorkspaceSettings {

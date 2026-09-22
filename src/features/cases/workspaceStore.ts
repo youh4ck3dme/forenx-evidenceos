@@ -44,6 +44,7 @@ interface WorkspaceState {
   storageUsage: number
   storageQuota: number
   leftTab: 'evidence' | 'timeline' | 'entities' | 'findings' | 'reports'
+  workspaceMode: 'evidence' | 'malte'
   commandOpen: boolean
   auditOpen: boolean
   mobilePanel: 'none' | 'cases' | 'ai'
@@ -59,6 +60,7 @@ interface WorkspaceState {
   toggleEvidenceSelection: (id: string) => void
   importEvidence: (files: FileList | File[]) => Promise<void>
   setLeftTab: (tab: WorkspaceState['leftTab']) => void
+  setWorkspaceMode: (mode: WorkspaceState['workspaceMode']) => void
   setCommandOpen: (open: boolean) => void
   setAuditOpen: (open: boolean) => void
   setMobilePanel: (panel: WorkspaceState['mobilePanel']) => void
@@ -86,6 +88,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   storageUsage: 0,
   storageQuota: 0,
   leftTab: 'evidence',
+  workspaceMode: 'evidence',
   commandOpen: false,
   auditOpen: false,
   mobilePanel: 'none',
@@ -233,6 +236,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   setLeftTab: (tab) => set({ leftTab: tab }),
+  setWorkspaceMode: (mode) => set({ workspaceMode: mode }),
   setCommandOpen: (open) => set({ commandOpen: open }),
   setAuditOpen: (open) => set({ auditOpen: open }),
   setMobilePanel: (panel) => set({ mobilePanel: panel }),

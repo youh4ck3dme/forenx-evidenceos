@@ -1,13 +1,20 @@
 import { db } from './db'
 import type {
   AiRunRecord,
+  AlertRecord,
   AuditEvent,
   CaseRecord,
+  CommodityRecord,
+  DetectionRuleConfig,
+  DetectionRunRecord,
   EntityRecord,
   EvidenceItem,
   ExtractionRecord,
   FindingRecord,
+  RelationshipRecord,
+  SubjectRecord,
   TimelineEventRecord,
+  TransactionRecord,
 } from './types'
 
 export interface CaseRepository {
@@ -118,4 +125,75 @@ export const localAuditRepository: AuditRepository = {
     db.auditEvents.where('caseId').equals(caseId).reverse().sortBy('createdAt'),
   append: (event) => db.auditEvents.add(event).then(() => undefined),
   countByCase: (caseId) => db.auditEvents.where('caseId').equals(caseId).count(),
+}
+
+export const localSubjectRepository = {
+  listByCase: (caseId: string) =>
+    db.subjects.where('caseId').equals(caseId).toArray(),
+  putMany: async (records: SubjectRecord[]) => {
+    await db.subjects.bulkPut(records)
+  },
+  clearCase: async (caseId: string) => {
+    await db.subjects.where('caseId').equals(caseId).delete()
+  },
+}
+
+export const localTransactionRepository = {
+  listByCase: (caseId: string) =>
+    db.transactions.where('caseId').equals(caseId).toArray(),
+  putMany: async (records: TransactionRecord[]) => {
+    await db.transactions.bulkPut(records)
+  },
+  clearCase: async (caseId: string) => {
+    await db.transactions.where('caseId').equals(caseId).delete()
+  },
+}
+
+export const localCommodityRepository = {
+  listByCase: (caseId: string) =>
+    db.commodities.where('caseId').equals(caseId).toArray(),
+  putMany: async (records: CommodityRecord[]) => {
+    await db.commodities.bulkPut(records)
+  },
+}
+
+export const localRelationshipRepository = {
+  listByCase: (caseId: string) =>
+    db.relationships.where('caseId').equals(caseId).toArray(),
+  putMany: async (records: RelationshipRecord[]) => {
+    await db.relationships.bulkPut(records)
+  },
+  clearCase: async (caseId: string) => {
+    await db.relationships.where('caseId').equals(caseId).delete()
+  },
+}
+
+export const localAlertRepository = {
+  listByCase: (caseId: string) =>
+    db.alerts.where('caseId').equals(caseId).reverse().sortBy('createdAt'),
+  putMany: async (records: AlertRecord[]) => {
+    await db.alerts.bulkPut(records)
+  },
+  update: async (id: string, patch: Partial<AlertRecord>) => {
+    await db.alerts.update(id, patch)
+  },
+  clearCase: async (caseId: string) => {
+    await db.alerts.where('caseId').equals(caseId).delete()
+  },
+}
+
+export const localDetectionConfigRepository = {
+  getByCase: async (caseId: string) =>
+    db.detectionConfigs.where('caseId').equals(caseId).first(),
+  put: async (record: DetectionRuleConfig) => {
+    await db.detectionConfigs.put(record)
+  },
+}
+
+export const localDetectionRunRepository = {
+  listByCase: (caseId: string) =>
+    db.detectionRuns.where('caseId').equals(caseId).reverse().sortBy('startedAt'),
+  put: async (record: DetectionRunRecord) => {
+    await db.detectionRuns.put(record)
+  },
 }

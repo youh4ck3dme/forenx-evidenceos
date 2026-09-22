@@ -34,6 +34,8 @@ export function CaseSidebar() {
   const setSelectedEvidence = useWorkspaceStore((s) => s.setSelectedEvidence)
   const toggleEvidenceSelection = useWorkspaceStore((s) => s.toggleEvidenceSelection)
   const setLeftTab = useWorkspaceStore((s) => s.setLeftTab)
+  const workspaceMode = useWorkspaceStore((s) => s.workspaceMode)
+  const setWorkspaceMode = useWorkspaceStore((s) => s.setWorkspaceMode)
   const { t } = useLocale()
 
   const activeCase = cases.find((c) => c.id === activeCaseId)
@@ -88,6 +90,22 @@ export function CaseSidebar() {
             ))}
           </select>
         )}
+        <div className="mt-2 grid grid-cols-2 gap-1">
+          <Button
+            size="sm"
+            variant={workspaceMode === 'evidence' ? 'default' : 'secondary'}
+            onClick={() => setWorkspaceMode('evidence')}
+          >
+            {t('case.mode.evidence')}
+          </Button>
+          <Button
+            size="sm"
+            variant={workspaceMode === 'malte' ? 'default' : 'secondary'}
+            onClick={() => setWorkspaceMode('malte')}
+          >
+            {t('case.mode.malte')}
+          </Button>
+        </div>
       </div>
 
       <div className="flex border-b border-fx-border text-[10px] font-mono uppercase tracking-wider">

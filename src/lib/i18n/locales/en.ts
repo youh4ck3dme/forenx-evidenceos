@@ -27,6 +27,8 @@ export const en = {
   'case.tab.entities': 'Entities',
   'case.tab.findings': 'Findings',
   'case.tab.reports': 'Reports',
+  'case.mode.evidence': 'Evidence',
+  'case.mode.malte': 'Malte',
   'case.evidenceCount': 'Evidence {count}',
   'case.noEvidence': 'No evidence imported.',
   'case.noTimeline': 'No timeline events.',
@@ -142,7 +144,7 @@ export const en = {
 
   'audit.title': 'Audit log',
   'audit.intro':
-    'Append-only local audit trail for this case. Events never overwrite prior entries.',
+    'Append-only local audit trail for this case. Events never overwrite prior entries. Malte events include ruleVersion and a prevHash→eventHash chain.',
   'audit.empty': 'No audit events yet.',
 
   'cmd.title': 'Command palette',

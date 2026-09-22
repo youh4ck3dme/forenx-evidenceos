@@ -29,6 +29,8 @@ export const sk: Messages = {
   'case.tab.entities': 'Entity',
   'case.tab.findings': 'Zistenia',
   'case.tab.reports': 'Správy',
+  'case.mode.evidence': 'Dôkazy',
+  'case.mode.malte': 'Malte',
   'case.evidenceCount': 'Dôkazy {count}',
   'case.noEvidence': 'Žiadne dôkazy.',
   'case.noTimeline': 'Žiadne udalosti na časovej osi.',
@@ -144,7 +146,7 @@ export const sk: Messages = {
 
   'audit.title': 'Auditný denník',
   'audit.intro':
-    'Iba pridávaný lokálny audit tohto prípadu. Udalosti nikdy neprepíšu predchádzajúce záznamy.',
+    'Iba pridávaný lokálny audit tohto prípadu. Udalosti nikdy neprepíšu predchádzajúce záznamy. Malte udalosti obsahujú ruleVersion a reťaz prevHash→eventHash.',
   'audit.empty': 'Zatiaľ žiadne auditné udalosti.',
 
   'cmd.title': 'Príkazová paleta',
