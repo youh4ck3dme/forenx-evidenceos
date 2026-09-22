@@ -162,6 +162,8 @@ export interface FindingRecord {
   sourceReferences: SourceReference[];
   reviewStatus: ReviewStatus;
   runId: string;
+  scoreEngineVersion?: string;
+  scoreReasons?: string[];
 }
 
 export interface EntityRecord {
@@ -176,6 +178,8 @@ export interface EntityRecord {
   confidence: number;
   createdAt: string;
   runId: string;
+  scoreEngineVersion?: string;
+  scoreReasons?: string[];
 }
 
 export interface TimelineEventRecord {
@@ -195,6 +199,8 @@ export interface TimelineEventRecord {
   confidence: number;
   createdAt: string;
   runId: string;
+  scoreEngineVersion?: string;
+  scoreReasons?: string[];
 }
 
 export type AiRunStatus = "STARTED" | "COMPLETED" | "FAILED" | "BLOCKED";
