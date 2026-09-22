@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   SCORE_ENGINE_VERSION,
@@ -102,13 +103,33 @@ test("unnormalized timeline timestamp is penalized", () => {
 test("question is capped as hypothesis", () => {
   const q = scoreQuestion("Kto autorizoval prevod?", ["ev-1"]);
   assert.ok(q.confidence <= 0.45);
+  assert.notEqual(q.confidence, 0.4);
+  assert.equal(q.engineVersion, SCORE_ENGINE_VERSION);
   assert.ok(q.reasons.some((r) => r.includes("HYPOTHESIS")));
+  assert.ok(q.reasons.includes("path:question"));
+  assert.ok(q.reasons.some((r) => r.includes("noProvenance")));
 });
 
 test("anomaly is inferred and not a hypothesis cap", () => {
   const a = scoreAnomaly("Dátum na faktúre nesedí s dátumom na výpise.", ["ev-1"]);
   const q = scoreQuestion("Kto autorizoval prevod?", ["ev-1"]);
   assert.ok(a.confidence >= q.confidence);
+  assert.notEqual(a.confidence, 0.5);
+  assert.equal(a.engineVersion, SCORE_ENGINE_VERSION);
+  assert.ok(a.reasons.some((r) => r.startsWith("base:INFERRED")));
+  assert.ok(a.reasons.includes("path:anomaly"));
+  assert.ok(!a.reasons.some((r) => r.includes("HYPOTHESIS")));
+});
+
+test("workspace store does not hardcode question or anomaly confidence", () => {
+  const src = readFileSync(new URL("../../features/workspace/store.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /confidence:\s*0\.4\b/);
+  assert.doesNotMatch(src, /confidence:\s*0\.5\b/);
+  assert.match(src, /scoreQuestion\(/);
+  assert.match(src, /scoreAnomaly\(/);
+  assert.match(src, /scoreEngineVersion:\s*scored\.engineVersion/);
+  assert.match(src, /scoreReasons:\s*scored\.reasons/);
+  assert.match(src, /export function selectCaseRisk/);
 });
 
 test("empty case risk is LOW 0", () => {
@@ -142,4 +163,32 @@ test("case risk is deterministic", () => {
     { epistemicClass: "HYPOTHESIS" as const, confidence: 0.2, reviewStatus: "PENDING" as const, statement: "Otázka: kto?" },
   ];
   assert.deepEqual(scoreCaseRisk(rows), scoreCaseRisk(rows));
+});
+
+test("case risk formula weights confidence and adds question and anomaly bumps", () => {
+  const one = scoreCaseRisk([
+    { epistemicClass: "OBSERVED", confidence: 0.8, reviewStatus: "ACCEPTED", statement: "Pečiatka na strane 2." },
+  ]);
+  // mass = 0.8 × 1, denom = max(3, 1) → round(26.666…) = 27
+  assert.equal(one.index, 27);
+  assert.equal(one.band, "MODERATE");
+  assert.equal(one.considered, 1);
+  assert.equal(one.engineVersion, SCORE_ENGINE_VERSION);
+
+  const plain = scoreCaseRisk([
+    { epistemicClass: "HYPOTHESIS", confidence: 0.2, reviewStatus: "PENDING", statement: "Text bez prefixu." },
+  ]);
+  const question = scoreCaseRisk([
+    { epistemicClass: "HYPOTHESIS", confidence: 0.2, reviewStatus: "PENDING", statement: "Otázka: kto autorizoval?" },
+  ]);
+  const anomaly = scoreCaseRisk([
+    { epistemicClass: "INFERRED", confidence: 0.2, reviewStatus: "PENDING", statement: "Nezrovnalosť: dátum nesedí." },
+  ]);
+  // mass 0.05 / 3 × 100 = 1.666… → 2; question bump +2
+  assert.equal(plain.index, 2);
+  assert.equal(question.index, 4);
+  assert.equal(question.questions, 1);
+  // mass 0.12 / 3 × 100 = 4; anomaly bump +4
+  assert.equal(anomaly.index, 8);
+  assert.equal(anomaly.anomalies, 1);
 });
