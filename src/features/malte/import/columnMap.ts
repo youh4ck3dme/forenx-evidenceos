@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "@keep-lts/xlsx";
 import { createId } from "@/lib/ids";
 import type { TransactionRecord } from "@/domain/types";
 

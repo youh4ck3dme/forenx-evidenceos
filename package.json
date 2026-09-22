@@ -4,7 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "overrides": {
-    "nf3": "0.3.17"
+    "nf3": "0.3.17",
+    "xlsx": "npm:@keep-lts/xlsx@^0.18.6"
   },
   "scripts": {
     "dev": "node scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080",
@@ -79,7 +80,7 @@
     "tailwindcss": "^4.3.0",
     "tw-animate-css": "^1.3.4",
     "vaul": "^1.1.2",
-    "xlsx": "^0.18.5",
+    "@keep-lts/xlsx": "^0.18.6",
     "zod": "^4.4.0",
     "zustand": "^5.0.0"
   },
