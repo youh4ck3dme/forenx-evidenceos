@@ -16,10 +16,11 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/viewport.test.ts src/lib/parsers/detect.test.ts src/lib/hash/sha256.test.ts src/lib/security/prompt-boundary.test.ts src/lib/scoring/score.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/viewport.test.ts src/lib/parsers/detect.test.ts src/lib/hash/sha256.test.ts src/lib/security/prompt-boundary.test.ts src/lib/scoring/score.test.ts src/features/export/export-case.test.ts",
     "test:custody": "node --experimental-strip-types --test src/lib/parsers/detect.test.ts src/lib/hash/sha256.test.ts",
     "test:boundary": "node --experimental-strip-types --test src/lib/security/prompt-boundary.test.ts",
     "test:scoring": "node --experimental-strip-types --test src/lib/scoring/score.test.ts",
+    "test:export": "node --experimental-strip-types --test src/features/export/export-case.test.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
