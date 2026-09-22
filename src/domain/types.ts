@@ -328,6 +328,8 @@ export interface AlertRecord {
   reviewNote?: string;
   createdAt: string;
   detectionRunId: string;
+  /** Reviewed finding that no longer fires. The disposition is kept. */
+  obsolete?: boolean;
 }
 
 export interface DetectionWeights {

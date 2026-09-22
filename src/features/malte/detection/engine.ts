@@ -418,7 +418,8 @@ export function alertStableKey(
 /**
  * Copy analyst disposition onto the new run's matching findings and keep the
  * previous alert id so `MALTE_ALERT_REVIEWED` still points at a live row.
- * Findings that no longer fire are not resurrected.
+ * Reviewed findings that no longer fire stay in the case, marked obsolete.
+ * Unreviewed findings that no longer fire are dropped.
  */
 export function preserveAlertReviews(previous: AlertRecord[], next: AlertRecord[]): AlertRecord[] {
   const prior = new Map<string, AlertRecord>();
@@ -427,9 +428,14 @@ export function preserveAlertReviews(previous: AlertRecord[], next: AlertRecord[
     const existing = prior.get(key);
     if (!existing || preferReview(alert, existing)) prior.set(key, alert);
   }
-  return next.map((alert) => {
-    const prev = prior.get(alertStableKey(alert));
-    if (!prev) return alert;
+  const usedIds = new Set<string>();
+  const usedKeys = new Set<string>();
+  const merged = next.map((alert) => {
+    const key = alertStableKey(alert);
+    const prev = prior.get(key);
+    if (!prev) return { ...alert, obsolete: false };
+    usedIds.add(prev.id);
+    usedKeys.add(key);
     return {
       ...alert,
       id: prev.id,
@@ -439,8 +445,15 @@ export function preserveAlertReviews(previous: AlertRecord[], next: AlertRecord[
       reviewNote: prev.reviewNote,
       assignedTo: prev.assignedTo,
       createdAt: prev.createdAt,
+      obsolete: false,
     };
   });
+  for (const alert of previous) {
+    if (usedIds.has(alert.id) || usedKeys.has(alertStableKey(alert))) continue;
+    if (!REVIEWED_ALERT_STATUSES.has(alert.status)) continue;
+    merged.push({ ...alert, obsolete: true });
+  }
+  return merged;
 }
 
 function preferReview(candidate: AlertRecord, current: AlertRecord): boolean {

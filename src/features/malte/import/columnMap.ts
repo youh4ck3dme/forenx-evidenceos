@@ -42,9 +42,10 @@ export async function parseTabularFile(file: File): Promise<ParsedSheet> {
     const text = new TextDecoder("utf-8").decode(buf);
     return parseCsvText(text, file.name);
   }
-  const wb = XLSX.read(buf, { type: "array", raw: false });
+  const wb = XLSX.read(buf, { type: "array", cellNF: true, cellDates: false });
   const sheetName = wb.SheetNames[0] ?? "Sheet1";
   const sheet = wb.Sheets[sheetName];
+  if (sheet) normalizeExcelDateCells(sheet);
   const matrix = XLSX.utils.sheet_to_json<(string | number | null)[]>(sheet, {
     header: 1,
     defval: "",
@@ -107,6 +108,44 @@ function splitCsvLine(line: string, delim: string): string[] {
   }
   out.push(cur.trim());
   return out;
+}
+
+const EXCEL_DATE_FORMAT_IDS = new Set([
+  14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 30, 36, 45, 46, 47, 50, 57,
+]);
+
+/** Excel 1900 date system. Serial 45352 is 2024-03-01 in every timezone. */
+export function excelSerialToCalendarDate(serial: number): string | null {
+  if (!Number.isFinite(serial)) return null;
+  const whole = Math.floor(serial);
+  if (whole < 32874 || whole > 76701) return null;
+  const utc = new Date(Date.UTC(1899, 11, 30) + whole * 86400000);
+  return calendarDate(utc.getUTCFullYear(), utc.getUTCMonth() + 1, utc.getUTCDate());
+}
+
+function isExcelDateFormat(fmt: string | number | undefined): boolean {
+  if (typeof fmt === "number") return EXCEL_DATE_FORMAT_IDS.has(fmt);
+  if (!fmt) return false;
+  const stripped = fmt.replace(/"[^"]*"/g, "");
+  if (/[[\]]/.test(stripped)) return false;
+  const lower = stripped.toLowerCase();
+  return /y+/.test(lower) && (/d+/.test(lower) || /m+/.test(lower));
+}
+
+function normalizeExcelDateCells(sheet: XLSX.WorkSheet): void {
+  for (const addr of Object.keys(sheet)) {
+    if (addr.startsWith("!")) continue;
+    const cell = sheet[addr];
+    if (!cell || cell.t !== "n" || typeof cell.v !== "number") continue;
+    const fmt = cell.z;
+    const format = typeof fmt === "string" || typeof fmt === "number" ? fmt : undefined;
+    if (!isExcelDateFormat(format)) continue;
+    const iso = excelSerialToCalendarDate(cell.v);
+    if (!iso) continue;
+    cell.t = "s";
+    cell.v = iso;
+    cell.w = iso;
+  }
 }
 
 /**
@@ -287,6 +326,8 @@ export function parseBookedAt(raw: string): string | null {
     const year = expandYear(slashed[3]!);
     return calendarDate(year, monthFirst, daySecond) ?? calendarDate(year, daySecond, monthFirst);
   }
+
+  if (/^\d{5,6}(?:\.\d+)?$/.test(s)) return excelSerialToCalendarDate(Number(s));
 
   return null;
 }

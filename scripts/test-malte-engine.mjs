@@ -10,14 +10,21 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import XLSX from "@keep-lts/xlsx";
 import {
+  excelSerialToCalendarDate,
   parseAmount,
   parseBookedAt,
   parseCsvText,
+  parseTabularFile,
   rowsToTransactions,
   suggestColumnMap,
 } from "../src/features/malte/import/columnMap.ts";
-import { alertStableKey, runMalteDetection } from "../src/features/malte/detection/engine.ts";
+import {
+  alertStableKey,
+  preserveAlertReviews,
+  runMalteDetection,
+} from "../src/features/malte/detection/engine.ts";
 import {
   localAlertRepository,
   localTransactionRepository,
@@ -33,7 +40,11 @@ function assertAmount(raw, expected) {
 
 function assertDay(raw, expected) {
   const got = parseBookedAt(raw);
-  assert.equal(got, expected, `parseBookedAt(${JSON.stringify(raw)}) → ${got}, expected ${expected}`);
+  assert.equal(
+    got,
+    expected,
+    `parseBookedAt(${JSON.stringify(raw)}) → ${got}, expected ${expected}`,
+  );
 }
 
 const sheet = parseCsvText(csv, "malte_ebabcan_sample.csv");
@@ -100,10 +111,7 @@ const crossBorder = withCountries.filter(
 assert.ok(crossBorder.length >= 4, `expected cross-border rows, got ${crossBorder.length}`);
 const withCommodity = imported.transactions.filter((tx) => tx.commodityCode);
 assert.equal(withCommodity.length, 2);
-assert.deepEqual(
-  withCommodity.map((tx) => tx.commodityCode).sort(),
-  ["9301", "9306"],
-);
+assert.deepEqual(withCommodity.map((tx) => tx.commodityCode).sort(), ["9301", "9306"]);
 
 assertAmount("1.234,56", 1234.56);
 assertAmount("1.234.567,89", 1234567.89);
@@ -147,7 +155,29 @@ assertDay("1. 3. 2024", "2024-03-01");
 assertDay("3/1/24", "2024-03-01");
 assertDay("2024-03-01", "2024-03-01");
 assertDay("31.02.2024", null);
+assertDay("45352", "2024-03-01");
+assert.equal(excelSerialToCalendarDate(45352), "2024-03-01");
 assert.equal(parseBookedAt("01.03.2024").length, 10);
+
+const xlsxBook = XLSX.utils.book_new();
+const xlsxSheet = XLSX.utils.aoa_to_sheet([
+  ["Date", "Amount", "From", "To"],
+  [new Date(Date.UTC(2024, 2, 1)), 1234.56, "Alpha", "Beta"],
+]);
+XLSX.utils.book_append_sheet(xlsxBook, xlsxSheet, "Sheet1");
+const xlsxFile = new File(
+  [XLSX.write(xlsxBook, { type: "buffer", bookType: "xlsx" })],
+  "march.xlsx",
+);
+const xlsxParsed = await parseTabularFile(xlsxFile);
+assert.equal(xlsxParsed.rows[0][0], "2024-03-01");
+const xlsxImported = rowsToTransactions(xlsxParsed, suggestColumnMap(xlsxParsed.headers), {
+  caseId: "case_xlsx",
+  workspaceId: "ws_test",
+});
+assert.equal(xlsxImported.skipped, 0, xlsxImported.errors.join("\n"));
+assert.equal(xlsxImported.transactions[0].bookedAt, "2024-03-01");
+assert.equal(xlsxImported.transactions[0].amount, 1234.56);
 
 const caseId = "case_review";
 const workspaceId = "ws_test";
@@ -201,6 +231,7 @@ for (const [id, status, note] of [
   assert.equal(found.reviewedBy, "analyst");
   assert.equal(found.reviewedAt, reviewedAt);
   if (note) assert.equal(found.reviewNote, note);
+  assert.equal(found.obsolete, false);
   const dupes = alerts2.filter((alert) => alertStableKey(alert) === alertStableKey(found));
   assert.equal(dupes.length, 1, `stable finding ${alertStableKey(found)} was duplicated`);
 }
@@ -212,6 +243,88 @@ const shellHits = imported.transactions.filter((tx) => {
   );
 }).length;
 assert.ok(shellHits >= 4, `expected shell hits, got ${shellHits}`);
+
+function finding(partial) {
+  return {
+    caseId: "case_review",
+    workspaceId: "ws_test",
+    ruleVersion: "malte-rules-v1.0.0",
+    title: "t",
+    description: "d",
+    severity: "HIGH",
+    factors: [],
+    subjectIds: [],
+    transactionIds: [],
+    createdAt: "2024-03-01T00:00:00.000Z",
+    detectionRunId: "drun_old",
+    ...partial,
+  };
+}
+const reconciled = preserveAlertReviews(
+  [
+    finding({
+      id: "alert_live",
+      ruleId: "tx_anomaly",
+      status: "FALSE_POSITIVE",
+      score: 50,
+      transactionIds: ["tx_live"],
+      subjectIds: ["s9"],
+      reviewedBy: "analyst",
+      reviewNote: "ok",
+    }),
+    finding({
+      id: "alert_stale",
+      ruleId: "tx_anomaly",
+      status: "ESCALATED",
+      score: 40,
+      transactionIds: ["tx_gone"],
+      subjectIds: ["s1", "s2"],
+      reviewedAt: "2024-03-04T00:00:00.000Z",
+      reviewedBy: "analyst",
+    }),
+    finding({
+      id: "alert_new_gone",
+      ruleId: "network_chain",
+      status: "NEW",
+      score: 36,
+      transactionIds: ["tx_a", "tx_b"],
+      subjectIds: ["s1", "s2", "s3"],
+    }),
+  ],
+  [
+    finding({
+      id: "alert_new_id",
+      ruleId: "tx_anomaly",
+      status: "NEW",
+      score: 90,
+      title: "refreshed",
+      transactionIds: ["tx_live"],
+      subjectIds: ["s9"],
+      detectionRunId: "drun_new",
+      createdAt: "2024-04-01T00:00:00.000Z",
+    }),
+  ],
+);
+const live = reconciled.find((alert) => alert.id === "alert_live");
+assert.ok(live);
+assert.equal(live.status, "FALSE_POSITIVE");
+assert.equal(live.score, 90);
+assert.equal(live.title, "refreshed");
+assert.equal(live.reviewNote, "ok");
+assert.equal(live.obsolete, false);
+assert.equal(
+  reconciled.find((alert) => alert.id === "alert_new_id"),
+  undefined,
+);
+const stale = reconciled.find((alert) => alert.id === "alert_stale");
+assert.ok(stale);
+assert.equal(stale.status, "ESCALATED");
+assert.equal(stale.reviewedBy, "analyst");
+assert.equal(stale.obsolete, true);
+assert.equal(
+  reconciled.some((alert) => alert.id === "alert_new_gone"),
+  false,
+);
 
 console.log("malte engine OK", {
   rows: imported.transactions.length,

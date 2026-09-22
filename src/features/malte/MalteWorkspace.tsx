@@ -354,7 +354,7 @@ export function MalteWorkspace({ caseId, workspaceId }: { caseId: string; worksp
                             {alert.score}/100
                           </span>
                           <span className="ml-auto font-mono text-[10px] text-subtle">
-                            {alert.status}
+                            {alert.obsolete ? `${alert.status} · obsolete` : alert.status}
                           </span>
                         </div>
                         <div className="text-xs font-medium text-foreground">{alert.title}</div>
