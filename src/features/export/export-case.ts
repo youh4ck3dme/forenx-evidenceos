@@ -20,6 +20,7 @@ import {
   SECTION_SOURCE_LABEL,
   enumLabel,
 } from "@/lib/copy";
+import { SCORE_ENGINE_VERSION, scoreCaseRisk, type CaseRiskResult } from "@/lib/scoring/score";
 
 export interface CaseExportBundle {
   exportedAt: string;
@@ -31,6 +32,8 @@ export interface CaseExportBundle {
   timeline: TimelineEventRecord[];
   aiRuns: AiRunRecord[];
   audit: AuditEventRecord[];
+  risk: CaseRiskResult;
+  scoreEngineVersion: string;
 }
 
 export function buildCaseExport(input: {
@@ -57,6 +60,8 @@ export function buildCaseExport(input: {
     timeline: input.timeline,
     aiRuns: input.aiRuns,
     audit: input.audit,
+    risk: scoreCaseRisk(input.findings),
+    scoreEngineVersion: SCORE_ENGINE_VERSION,
   };
 }
 
@@ -68,6 +73,11 @@ export function exportToMarkdown(bundle: CaseExportBundle): string {
   lines.push(`- Stav: ${enumLabel(CASE_STATUS_LABEL, bundle.case.status)}`);
   lines.push(`- Exportované: ${bundle.exportedAt}`);
   lines.push(`- Popis: ${bundle.case.description || "—"}`);
+  lines.push(`- Scoring engine: ${bundle.scoreEngineVersion}`);
+  lines.push(
+    `- Vyšetrovací index: ${bundle.risk.index} (${bundle.risk.band}) — nie je verdikt viny; počíta ho kód, nie model.`,
+  );
+  lines.push(`- Zohľadnené zistenia: ${bundle.risk.considered}, odmietnuté: ${bundle.risk.rejected}`);
   lines.push("");
   lines.push("## Inventár dôkazov");
   lines.push("");
@@ -82,6 +92,7 @@ export function exportToMarkdown(bundle: CaseExportBundle): string {
       `- Sekcia: ${enumLabel(SECTION_LABEL, item.section)} (${enumLabel(SECTION_SOURCE_LABEL, item.sectionSource)})`,
     );
     if (item.quarantineReason) lines.push(`- Karanténa: ${item.quarantineReason}`);
+    if (item.ingestLane === "QUARANTINE") lines.push("- Dráha ingestu: QUARANTINE");
     lines.push("");
   }
   lines.push("## Zistenia");
@@ -93,13 +104,16 @@ export function exportToMarkdown(bundle: CaseExportBundle): string {
     for (const ref of finding.sourceReferences) {
       lines.push(`  - zdroj: ${ref.fileName} (${ref.evidenceId})`);
     }
+    if (finding.scoreReasons?.length) {
+      lines.push(`  - scoring: ${finding.scoreReasons.join("; ")}`);
+    }
   }
   if (bundle.findings.length === 0) lines.push("_Žiadne zistenia._");
   lines.push("");
   lines.push("## Entity");
   lines.push("");
   for (const entity of bundle.entities) {
-    lines.push(`- ${entity.entityType}: ${entity.canonicalValue}`);
+    lines.push(`- ${entity.entityType}: ${entity.canonicalValue} (${entity.confidence.toFixed(2)})`);
   }
   if (bundle.entities.length === 0) lines.push("_Žiadne entity._");
   lines.push("");
