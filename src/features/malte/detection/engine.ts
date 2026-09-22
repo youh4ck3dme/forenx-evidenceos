@@ -19,6 +19,7 @@ import type {
   SubjectRecord,
   TransactionRecord,
 } from "@/domain/types";
+import { formatAlertCountLabel, partitionAlerts } from "@/features/malte/alertMetrics";
 import { DEFAULT_THRESHOLDS, DEFAULT_WEIGHTS, MALTE_RULE_VERSION } from "./defaults";
 
 function severityFor(score: number): AlertSeverity {
@@ -341,6 +342,8 @@ export async function runMalteDetection(
 
   const previousAlerts = await localAlertRepository.listByCase(caseId);
   const reconciled = preserveAlertReviews(previousAlerts, alerts);
+  const { live: liveAlerts, obsolete: obsoleteAlerts } = partitionAlerts(reconciled);
+  const alertCountLabel = formatAlertCountLabel(reconciled);
 
   await localSubjectRepository.putMany(subjects);
   await localTransactionRepository.putMany(transactions);
@@ -367,7 +370,7 @@ export async function runMalteDetection(
     ruleVersion: config.ruleVersion,
     startedAt,
     completedAt,
-    alertCount: reconciled.length,
+    alertCount: liveAlerts.length,
     subjectCount: subjects.length,
     transactionCount: transactions.length,
     weightsSnapshot: { ...config.weights },
@@ -380,11 +383,12 @@ export async function runMalteDetection(
     workspaceId,
     type: "MALTE_DETECTION_RUN",
     createdAt: completedAt,
-    message: `Malte detection ${config.ruleVersion}: ${reconciled.length} alerts`,
+    message: `Malte detection ${config.ruleVersion}: ${alertCountLabel}`,
     meta: {
       runId,
       ruleVersion: config.ruleVersion,
-      alertCount: reconciled.length,
+      alertCount: liveAlerts.length,
+      obsoleteCount: obsoleteAlerts.length,
       inputHash,
       weights: config.weights,
     },
