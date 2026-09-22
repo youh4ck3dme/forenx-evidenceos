@@ -236,3 +236,7 @@ export function scoreCaseRisk(findings: CaseRiskInput[]): CaseRiskResult {
     engineVersion: SCORE_ENGINE_VERSION,
   };
 }
+
+export function formatRiskLine(risk: CaseRiskResult): string {
+  return `Vyšetrovací index: ${risk.index} (${risk.band}) — nie je verdikt viny; počíta ho kód, nie model.`;
+}
