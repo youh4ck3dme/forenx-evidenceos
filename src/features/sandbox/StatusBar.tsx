@@ -1,9 +1,16 @@
 import { Download, Hash, Plus, ScrollText, Search } from "lucide-react";
 import { useRef, type ReactNode } from "react";
 import { ThemeSwitch } from "@/features/theme/ThemeSwitch";
-import { selectSelectedEvidence, useWorkspace } from "@/features/workspace/store";
+import { selectCaseRisk, selectSelectedEvidence, useWorkspace } from "@/features/workspace/store";
 import { skCount } from "@/lib/copy";
 import { cn, formatBytes, shortHash } from "@/lib/utils";
+
+const BAND_SK: Record<string, string> = {
+  LOW: "nízke",
+  MODERATE: "stredné",
+  ELEVATED: "zvýšené",
+  HIGH: "vysoké",
+};
 
 export function StatusBar() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -16,6 +23,7 @@ export function StatusBar() {
   const storageQuota = useWorkspace((s) => s.storageQuota);
   const evidenceCount = useWorkspace((s) => s.evidence.length);
   const selected = useWorkspace(selectSelectedEvidence);
+  const risk = useWorkspace(selectCaseRisk);
   const ingestBusy = useWorkspace((s) => s.ingestBusy);
   const ratio = storageQuota > 0 ? storageUsed / storageQuota : 0;
   const warn = ratio > 0.8;
@@ -45,6 +53,17 @@ export function StatusBar() {
         </span>
         <span className="text-subtle">·</span>
         <span className="shrink-0">{skCount(evidenceCount, "položka", "položky", "položiek")}</span>
+        <span className="text-subtle">·</span>
+        <span
+          className={cn(
+            "shrink-0",
+            risk.band === "HIGH" && "text-destructive",
+            risk.band === "ELEVATED" && "text-warn",
+          )}
+          title="Vyšetrovací index zistení, nie verdikt viny"
+        >
+          riziko {risk.index} {BAND_SK[risk.band] ?? risk.band}
+        </span>
       </div>
       <nav
         aria-label="Hlavné menu"
