@@ -126,8 +126,13 @@ export function excelSerialToCalendarDate(serial: number): string | null {
 function isExcelDateFormat(fmt: string | number | undefined): boolean {
   if (typeof fmt === "number") return EXCEL_DATE_FORMAT_IDS.has(fmt);
   if (!fmt) return false;
-  const stripped = fmt.replace(/"[^"]*"/g, "");
+  // Positive numbers use the first section. A date picture in a later section
+  // (negative / zero / text) must not turn a displayed currency amount into a day.
+  const firstSection = fmt.split(";")[0] ?? "";
+  const stripped = firstSection.replace(/"[^"]*"/g, "");
   if (/[[\]]/.test(stripped)) return false;
+  // Numeric pictures (`#`, `0`) are amounts, not calendar dates.
+  if (/[#0]/.test(stripped)) return false;
   const lower = stripped.toLowerCase();
   return /y+/.test(lower) && (/d+/.test(lower) || /m+/.test(lower));
 }

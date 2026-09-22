@@ -179,6 +179,35 @@ assert.equal(xlsxImported.skipped, 0, xlsxImported.errors.join("\n"));
 assert.equal(xlsxImported.transactions[0].bookedAt, "2024-03-01");
 assert.equal(xlsxImported.transactions[0].amount, 1234.56);
 
+// A currency picture that hides a date format in a later Excel section must
+// stay an amount. SheetJS renders 45352 as "45,352.00 EUR"; rewriting it to a
+// calendar day would drop the row.
+const stealthBook = XLSX.utils.book_new();
+const stealthSheet = XLSX.utils.aoa_to_sheet([
+  ["Date", "Amount", "From", "To"],
+  ["01.03.2024", 45352, "Alpha", "Beta"],
+  ["02.03.2024", 10.5, "Alpha", "Beta"],
+  ["05.03.2024", 50000, "Alpha", "Beta"],
+]);
+for (const addr of ["B2", "B3", "B4"]) {
+  stealthSheet[addr].z = '#,##0.00 "EUR";yyyy-mm-dd';
+}
+XLSX.utils.book_append_sheet(stealthBook, stealthSheet, "Sheet1");
+const stealthFile = new File(
+  [XLSX.write(stealthBook, { type: "buffer", bookType: "xlsx" })],
+  "stealth.xlsx",
+);
+const stealthParsed = await parseTabularFile(stealthFile);
+const stealthImported = rowsToTransactions(stealthParsed, suggestColumnMap(stealthParsed.headers), {
+  caseId: "case_stealth",
+  workspaceId: "ws_test",
+});
+assert.equal(stealthImported.skipped, 0, stealthImported.errors.join("\n"));
+assert.deepEqual(
+  stealthImported.transactions.map((tx) => tx.amount),
+  [45352, 10.5, 50000],
+);
+
 const caseId = "case_review";
 const workspaceId = "ws_test";
 await localTransactionRepository.putMany(
