@@ -10,6 +10,7 @@ export interface DetectionResult {
 
 const TEXT_EXT = new Set(["txt", "md", "markdown", "csv", "json", "xml", "html", "htm", "rtf"]);
 const IMAGE_EXT = new Set(["png", "jpg", "jpeg", "jpe", "webp", "heic", "heif", "avif", "gif", "bmp"]);
+const PDF_EXT = new Set(["pdf"]);
 
 export function fileExtension(name: string): string {
   const base = name.split(/[/\\]/).pop() ?? name;
@@ -27,38 +28,92 @@ function startsWith(bytes: Uint8Array, sig: number[], offset = 0): boolean {
   return sig.every((b, i) => bytes[offset + i] === b);
 }
 
+/** Magic-byte identity disagrees with a strong extension claim → quarantine. */
+function mismatchQuarantine(
+  magicLabel: string,
+  ext: string,
+  mime: string,
+  kind: DetectedKind,
+): DetectionResult | null {
+  if (!ext) return null;
+  if (magicLabel === "pdf" && IMAGE_EXT.has(ext)) {
+    return quarantined(
+      mime,
+      kind,
+      `Podpis je PDF (%PDF), prípona .${ext} tvrdí iný typ. Originál je uložený, súbor sa neextrahuje.`,
+    );
+  }
+  if (magicLabel === "image" && PDF_EXT.has(ext)) {
+    return quarantined(
+      mime,
+      kind,
+      `Podpis je obrázok, prípona .pdf tvrdí dokument. Originál je uložený, súbor sa neextrahuje.`,
+    );
+  }
+  if (magicLabel === "pdf" && TEXT_EXT.has(ext) && ext !== "") {
+    return quarantined(
+      mime,
+      kind,
+      `Podpis je PDF, prípona .${ext} tvrdí text. Originál je uložený, súbor sa neextrahuje.`,
+    );
+  }
+  return null;
+}
+
 export function detectFile(bytes: Uint8Array, filename: string, declaredMime: string): DetectionResult {
   const ext = fileExtension(filename);
   const head = bytes.subarray(0, Math.min(bytes.length, 96));
   const asAscii = asciiAt(head, 0, Math.min(head.length, 64));
 
   if (startsWith(head, [0x4d, 0x5a])) {
-    return quarantined("application/x-msdownload", "executable", "Podpis spustiteľného súboru PE/DOS (MZ). Originál je uložený, súbor sa nespúšťa.");
+    return quarantined(
+      "application/x-msdownload",
+      "executable",
+      "Podpis spustiteľného súboru PE/DOS (MZ). Originál je uložený, súbor sa nespúšťa.",
+    );
   }
   if (startsWith(head, [0x7f, 0x45, 0x4c, 0x46])) {
-    return quarantined("application/x-elf", "executable", "Podpis spustiteľného súboru ELF. Originál je uložený, súbor sa nespúšťa.");
+    return quarantined(
+      "application/x-elf",
+      "executable",
+      "Podpis spustiteľného súboru ELF. Originál je uložený, súbor sa nespúšťa.",
+    );
   }
   if (
     startsWith(head, [0xca, 0xfe, 0xba, 0xbe]) ||
     startsWith(head, [0xcf, 0xfa, 0xed, 0xfe]) ||
     startsWith(head, [0xfe, 0xed, 0xfa, 0xce])
   ) {
-    return quarantined("application/x-mach-binary", "executable", "Podpis spustiteľného súboru Mach-O. Originál je uložený, súbor sa nespúšťa.");
+    return quarantined(
+      "application/x-mach-binary",
+      "executable",
+      "Podpis spustiteľného súboru Mach-O. Originál je uložený, súbor sa nespúšťa.",
+    );
   }
 
   if (asAscii.startsWith("%PDF")) {
+    const bad = mismatchQuarantine("pdf", ext, "application/pdf", "pdf");
+    if (bad) return bad;
     return native("pdf", "application/pdf", "pdf");
   }
   if (startsWith(head, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
+    const bad = mismatchQuarantine("image", ext, "image/png", "image");
+    if (bad) return bad;
     return native("image", "image/png", "image");
   }
   if (startsWith(head, [0xff, 0xd8, 0xff])) {
+    const bad = mismatchQuarantine("image", ext, "image/jpeg", "image");
+    if (bad) return bad;
     return native("image", "image/jpeg", "image");
   }
   if (asAscii.startsWith("RIFF") && asciiAt(head, 8, 4) === "WEBP") {
+    const bad = mismatchQuarantine("image", ext, "image/webp", "image");
+    if (bad) return bad;
     return native("image", "image/webp", "image");
   }
   if (asAscii.startsWith("GIF8")) {
+    const bad = mismatchQuarantine("image", ext, "image/gif", "image");
+    if (bad) return bad;
     return native("image", "image/gif", "image");
   }
 
@@ -79,7 +134,11 @@ export function detectFile(bytes: Uint8Array, filename: string, declaredMime: st
 
   if (startsWith(head, [0x50, 0x4b, 0x03, 0x04]) || startsWith(head, [0x50, 0x4b, 0x05, 0x06])) {
     if (ext === "docx" || declaredMime.includes("wordprocessingml")) {
-      return native("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "metadata");
+      return native(
+        "docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "metadata",
+      );
     }
     return quarantined(
       "application/zip",
@@ -109,7 +168,11 @@ export function detectFile(bytes: Uint8Array, filename: string, declaredMime: st
   }
 
   if (looksLikeText(bytes) && (declaredMime.startsWith("text/") || TEXT_EXT.has(ext))) {
-    return native(ext === "md" ? "markdown" : "text", declaredMime || "text/plain", ext === "md" ? "markdown" : "text");
+    return native(
+      ext === "md" ? "markdown" : "text",
+      declaredMime || "text/plain",
+      ext === "md" ? "markdown" : "text",
+    );
   }
 
   if (IMAGE_EXT.has(ext) && declaredMime.startsWith("image/")) {
