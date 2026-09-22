@@ -56,7 +56,7 @@ export async function parseTabularFile(file: File): Promise<ParsedSheet> {
   return { headers, rows, sheetName };
 }
 
-function parseCsvText(text: string, fileName: string): ParsedSheet {
+export function parseCsvText(text: string, fileName: string): ParsedSheet {
   const lines = text
     .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
@@ -109,20 +109,59 @@ function splitCsvLine(line: string, delim: string): string[] {
   return out;
 }
 
-/** Heuristic auto-map from header labels. */
+/**
+ * Header text for matching: camelCase and separators become words, diacritics
+ * are stripped. Short tokens (`od`, `to`, `sum`) then only match whole words,
+ * so `CountryFrom` / `Commodity` are not swallowed by the generic rules.
+ */
+export function normalizeHeaderLabel(header: string): string {
+  return header
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const HEADER_RULES: { key: TxColumnKey; test: RegExp }[] = [
+  // Specific columns before generic from/to/amount. `od` is inside `commodity`.
+  {
+    key: "countryFrom",
+    test: /\b(country from|from country|krajina od|origin country|source country)\b/,
+  },
+  {
+    key: "countryTo",
+    test: /\b(country to|to country|krajina do|destination country|target country)\b/,
+  },
+  {
+    key: "commodityCode",
+    test: /\b(commodity|commodities|hs code|hscode|tariff|weapon|zbran\w*|serial|licence|license)\b/,
+  },
+  { key: "bookedAt", test: /\b(date|datum|booked|value date|posted|booking date)\b/ },
+  { key: "amount", test: /\b(amount|suma|sum|value|castka|ciastka)\b/ },
+  { key: "currency", test: /\b(currency|curr|mena|ccy)\b/ },
+  {
+    key: "fromLabel",
+    test: /\b(from|payer|platitel\w*|odosiel\w*|debtor|sender)\b|\bod\b/,
+  },
+  {
+    key: "toLabel",
+    test: /\b(to|payee|komu|prijem\w*|creditor|beneficiary|receiver)\b/,
+  },
+  { key: "description", test: /\b(description|desc|popis|purpose|nazov|text|memo|note)\b/ },
+  { key: "reference", test: /\b(reference|ref|variable symbol|variabilny|vs)\b/ },
+];
+
+/** Heuristic auto-map from header labels. First matching rule wins. */
 export function suggestColumnMap(headers: string[]): TxColumnKey[] {
-  return headers.map((h) => {
-    const x = h.toLowerCase();
-    if (/date|datum|booked|value.?date|posted/.test(x)) return "bookedAt";
-    if (/amount|suma|sum|value|castka|čiastka|ciastka/.test(x)) return "amount";
-    if (/curr|mena|ccy|currency/.test(x)) return "currency";
-    if (/from|payer|od|platitel|odosiel|debtor|sender/.test(x)) return "fromLabel";
-    if (/to|payee|komu|prijem|creditor|beneficiary|receiver/.test(x)) return "toLabel";
-    if (/desc|popis|purpose|nazov|text|memo/.test(x)) return "description";
-    if (/ref|vs|variable|reference/.test(x)) return "reference";
-    if (/country.?from|from.?country|krajina.?od/.test(x)) return "countryFrom";
-    if (/country.?to|to.?country|krajina.?do/.test(x)) return "countryTo";
-    if (/commodity|hs.?code|zbran|weapon|serial|licence|license/.test(x)) return "commodityCode";
+  return headers.map((header) => {
+    const label = normalizeHeaderLabel(header);
+    if (!label) return "skip";
+    for (const rule of HEADER_RULES) {
+      if (rule.test.test(label)) return rule.key;
+    }
     return "skip";
   });
 }
@@ -153,16 +192,123 @@ function cell(row: string[], map: TxColumnKey[], key: TxColumnKey): string {
   return row[idx] ?? "";
 }
 
-function parseAmount(raw: string): number {
-  const cleaned = raw.replace(/\s/g, "").replace(/€|\$|£/g, "");
-  if (!cleaned) return NaN;
-  const normalized =
-    cleaned.includes(",") && cleaned.includes(".")
-      ? cleaned.replace(/,/g, "")
-      : cleaned.includes(",")
-        ? cleaned.replace(",", ".")
-        : cleaned;
-  return Number(normalized);
+/**
+ * Parse a money cell. The last `.` or `,` is the decimal mark when both appear
+ * (`1.234,56` → 1234.56, `1,234.56` → 1234.56). A repeated separator with
+ * groups of three is thousands (`1,250,000`, `1.234.567,89`). A single comma
+ * is a decimal mark (`1234,56`).
+ */
+export function parseAmount(raw: string): number {
+  let s = raw.trim();
+  if (!s) return NaN;
+  s = s.replace(/[\s\u00A0\u202F]/g, "").replace(/[€$£¥]/g, "");
+  s = s.replace(/^(eur|usd|gbp|czk|chf|pln|skk)/i, "");
+  s = s.replace(/(eur|usd|gbp|czk|chf|pln|skk)$/i, "");
+  if (!s) return NaN;
+
+  let sign = 1;
+  if (s.startsWith("(") && s.endsWith(")")) {
+    sign = -1;
+    s = s.slice(1, -1);
+  }
+  if (s.startsWith("+")) s = s.slice(1);
+  else if (s.startsWith("-") || s.startsWith("−")) {
+    sign = -1;
+    s = s.slice(1);
+  }
+  s = s.replace(/'/g, "");
+  if (!/^[\d.,]+$/.test(s)) return NaN;
+
+  const comma = s.lastIndexOf(",");
+  const dot = s.lastIndexOf(".");
+  let normalized: string;
+  if (comma >= 0 && dot >= 0) {
+    const decimalIsComma = comma > dot;
+    const decimalSep = decimalIsComma ? "," : ".";
+    const groupSep = decimalIsComma ? "." : ",";
+    const cut = s.lastIndexOf(decimalSep);
+    const intRaw = s.slice(0, cut);
+    const frac = s.slice(cut + 1);
+    if (!isGroupedInteger(intRaw, groupSep) || !/^\d+$/.test(frac)) return NaN;
+    normalized = `${intRaw.split(groupSep).join("")}.${frac}`;
+  } else if (comma >= 0 || dot >= 0) {
+    const sep = comma >= 0 ? "," : ".";
+    const parts = s.split(sep);
+    const allDigits = parts.every((part) => /^\d+$/.test(part));
+    if (!allDigits || parts.some((part) => part.length === 0)) return NaN;
+    if (parts.length > 2 && parts.slice(1).every((part) => part.length === 3)) {
+      normalized = parts.join("");
+    } else if (parts.length === 2) {
+      normalized = `${parts[0]}.${parts[1]}`;
+    } else {
+      return NaN;
+    }
+  } else {
+    normalized = s;
+  }
+
+  if (!/^\d+(\.\d+)?$/.test(normalized)) return NaN;
+  const n = Number(normalized);
+  if (!Number.isFinite(n)) return NaN;
+  return sign * n;
+}
+
+function isGroupedInteger(raw: string, sep: string): boolean {
+  if (!raw) return false;
+  const parts = raw.split(sep);
+  if (parts.some((part) => !/^\d+$/.test(part))) return false;
+  if (parts.length === 1) return true;
+  if (parts[0]!.length < 1 || parts[0]!.length > 3) return false;
+  return parts.slice(1).every((part) => part.length === 3);
+}
+
+/**
+ * Booking day as `YYYY-MM-DD`. Dotted dates are day.month.year (including days
+ * 1–12). Slashes follow SheetJS `m/d/yy` unless that month is impossible.
+ * Does not call `Date.parse` — local midnight must not shift the calendar day.
+ */
+export function parseBookedAt(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/.exec(s);
+  if (iso) return calendarDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+
+  const dotted =
+    /^(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{2,4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/.exec(s);
+  if (dotted) {
+    return calendarDate(expandYear(dotted[3]!), Number(dotted[2]), Number(dotted[1]));
+  }
+
+  const slashed = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(s);
+  if (slashed) {
+    const monthFirst = Number(slashed[1]);
+    const daySecond = Number(slashed[2]);
+    const year = expandYear(slashed[3]!);
+    return calendarDate(year, monthFirst, daySecond) ?? calendarDate(year, daySecond, monthFirst);
+  }
+
+  return null;
+}
+
+function expandYear(raw: string): number {
+  if (raw.length >= 4) return Number(raw);
+  const yy = Number(raw);
+  return yy >= 70 ? 1900 + yy : 2000 + yy;
+}
+
+function calendarDate(year: number, month: number, day: number): string | null {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  if (year < 1000 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function validateRow(row: string[], map: TxColumnKey[], rowIndex: number): ImportPreviewRow {
@@ -174,20 +320,12 @@ function validateRow(row: string[], map: TxColumnKey[], rowIndex: number): Impor
   const currency = (cell(row, map, "currency") || "EUR").toUpperCase();
   const description = cell(row, map, "description");
   const amount = parseAmount(amountRaw);
-  let bookedAt = bookedAtRaw;
+  let bookedAt = "";
   if (!bookedAtRaw) errors.push("Missing date");
   else {
-    const d = new Date(bookedAtRaw);
-    if (Number.isNaN(d.getTime())) {
-      // try DD.MM.YYYY
-      const m = bookedAtRaw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
-      if (m) {
-        const y = m[3]!.length === 2 ? `20${m[3]}` : m[3]!;
-        bookedAt = `${y}-${m[2]!.padStart(2, "0")}-${m[1]!.padStart(2, "0")}`;
-      } else errors.push("Invalid date");
-    } else {
-      bookedAt = d.toISOString();
-    }
+    const parsed = parseBookedAt(bookedAtRaw);
+    if (!parsed) errors.push("Invalid date");
+    else bookedAt = parsed;
   }
   if (!amountRaw || Number.isNaN(amount)) errors.push("Invalid amount");
   if (!map.includes("fromLabel") && !map.includes("toLabel")) {

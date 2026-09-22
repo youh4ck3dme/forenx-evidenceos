@@ -339,13 +339,16 @@ export async function runMalteDetection(
     }
   }
 
+  const previousAlerts = await localAlertRepository.listByCase(caseId);
+  const reconciled = preserveAlertReviews(previousAlerts, alerts);
+
   await localSubjectRepository.putMany(subjects);
   await localTransactionRepository.putMany(transactions);
   await localRelationshipRepository.clearCase(caseId);
   if (relationships.length) await localRelationshipRepository.putMany(relationships);
 
   await localAlertRepository.clearCase(caseId);
-  await localAlertRepository.putMany(alerts);
+  if (reconciled.length) await localAlertRepository.putMany(reconciled);
 
   const inputHash = await sha256Hex(
     new TextEncoder().encode(
@@ -364,7 +367,7 @@ export async function runMalteDetection(
     ruleVersion: config.ruleVersion,
     startedAt,
     completedAt,
-    alertCount: alerts.length,
+    alertCount: reconciled.length,
     subjectCount: subjects.length,
     transactionCount: transactions.length,
     weightsSnapshot: { ...config.weights },
@@ -377,17 +380,74 @@ export async function runMalteDetection(
     workspaceId,
     type: "MALTE_DETECTION_RUN",
     createdAt: completedAt,
-    message: `Malte detection ${config.ruleVersion}: ${alerts.length} alerts`,
+    message: `Malte detection ${config.ruleVersion}: ${reconciled.length} alerts`,
     meta: {
       runId,
       ruleVersion: config.ruleVersion,
-      alertCount: alerts.length,
+      alertCount: reconciled.length,
       inputHash,
       weights: config.weights,
     },
   });
 
-  return { runId, alerts, subjects, relationships };
+  return { runId, alerts: reconciled, subjects, relationships };
+}
+
+const REVIEWED_ALERT_STATUSES = new Set<AlertRecord["status"]>([
+  "REVIEWED",
+  "FALSE_POSITIVE",
+  "ESCALATED",
+]);
+
+/**
+ * Identity of a finding across runs. Score and alert id change every run;
+ * the rule plus the transactions (or the subject, for shell alerts) do not.
+ */
+export function alertStableKey(
+  alert: Pick<AlertRecord, "ruleId" | "transactionIds" | "subjectIds">,
+): string {
+  const transactions = [...alert.transactionIds].filter(Boolean).sort();
+  const subjects = alert.subjectIds.filter(Boolean);
+  if (transactions.length) {
+    // Subject order keeps A→B→C distinct from the reverse chain on the same txs.
+    return `${alert.ruleId}|tx|${transactions.join(",")}|path|${subjects.join(">")}`;
+  }
+  return `${alert.ruleId}|subj|${[...subjects].sort().join(",")}`;
+}
+
+/**
+ * Copy analyst disposition onto the new run's matching findings and keep the
+ * previous alert id so `MALTE_ALERT_REVIEWED` still points at a live row.
+ * Findings that no longer fire are not resurrected.
+ */
+export function preserveAlertReviews(previous: AlertRecord[], next: AlertRecord[]): AlertRecord[] {
+  const prior = new Map<string, AlertRecord>();
+  for (const alert of previous) {
+    const key = alertStableKey(alert);
+    const existing = prior.get(key);
+    if (!existing || preferReview(alert, existing)) prior.set(key, alert);
+  }
+  return next.map((alert) => {
+    const prev = prior.get(alertStableKey(alert));
+    if (!prev) return alert;
+    return {
+      ...alert,
+      id: prev.id,
+      status: prev.status,
+      reviewedAt: prev.reviewedAt,
+      reviewedBy: prev.reviewedBy,
+      reviewNote: prev.reviewNote,
+      assignedTo: prev.assignedTo,
+      createdAt: prev.createdAt,
+    };
+  });
+}
+
+function preferReview(candidate: AlertRecord, current: AlertRecord): boolean {
+  const candidateReviewed = REVIEWED_ALERT_STATUSES.has(candidate.status);
+  const currentReviewed = REVIEWED_ALERT_STATUSES.has(current.status);
+  if (candidateReviewed !== currentReviewed) return candidateReviewed;
+  return candidate.createdAt > current.createdAt;
 }
 
 function makeAlert(input: {

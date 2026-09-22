@@ -25,7 +25,8 @@ export async function appendAuditChained(
   const eventHash = await sha256Hex(new TextEncoder().encode(canonicalPayload(withPrev)));
   const event: AuditEventRecord = { ...withPrev, eventHash };
   await localAuditRepository.append(event);
-  if (partial.caseId && typeof indexedDB !== "undefined") {
+  // Browser UI refresh only. Node tests may polyfill indexedDB; they have no document.
+  if (partial.caseId && typeof document !== "undefined" && typeof indexedDB !== "undefined") {
     const { useWorkspace } = await import("@/features/workspace/store");
     void useWorkspace.getState().refreshAudit();
   }
