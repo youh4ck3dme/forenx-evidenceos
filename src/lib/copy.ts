@@ -78,6 +78,11 @@ export const AUDIT_TYPE_LABEL: Record<AuditType, string> = {
   AI_ANALYSIS_FAILED: "Analýza zlyhala",
   FINDING_REVIEWED: "Zistenie posúdené",
   EXPORT_CREATED: "Export vytvorený",
+  MALTE_IMPORT: "Malte import",
+  MALTE_DETECTION_RUN: "Malte detekcia",
+  MALTE_ALERT_REVIEWED: "Malte posúdenie",
+  MALTE_REPORT_EXPORTED: "Malte správa",
+  MALTE_WEIGHTS_UPDATED: "Malte váhy",
 };
 
 export const LANE_LABEL: Record<IngestLane, string> = {

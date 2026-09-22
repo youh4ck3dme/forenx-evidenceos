@@ -11,12 +11,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { CLASSIFICATIONS, type Classification } from "@/domain/types";
 import { selectActiveCase, useWorkspace } from "@/features/workspace/store";
 import { AUDIT_TYPE_LABEL, CLASSIFICATION_LABEL, enumLabel, skCount } from "@/lib/copy";
+import { useLocale } from "@/lib/i18n";
 import { formatIso } from "@/lib/utils";
 
 export function WorkspaceDialogs() {
@@ -59,7 +66,9 @@ function CreateCaseDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Nový lokálny prípad</DialogTitle>
-          <DialogDescription>Uloží sa len v tomto prehliadači. Účet nie je potrebný.</DialogDescription>
+          <DialogDescription>
+            Uloží sa len v tomto prehliadači. Účet nie je potrebný.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1.5">
@@ -73,7 +82,10 @@ function CreateCaseDialog() {
           </div>
           <div className="grid gap-1.5">
             <Label>Klasifikácia</Label>
-            <Select value={classification} onValueChange={(v) => setClassification(v as Classification)}>
+            <Select
+              value={classification}
+              onValueChange={(v) => setClassification(v as Classification)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -88,7 +100,11 @@ function CreateCaseDialog() {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="case-desc">Popis</Label>
-            <Textarea id="case-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Textarea
+              id="case-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="case-tags">Značky</Label>
@@ -116,20 +132,28 @@ function AiConfirmDialog() {
   const active = useWorkspace(selectActiveCase);
 
   const ids =
-    action && (action.id === "case-report" || action.id === "evidence-gaps" || action.id === "investigator-questions")
+    action &&
+    (action.id === "case-report" ||
+      action.id === "evidence-gaps" ||
+      action.id === "investigator-questions")
       ? evidence.map((e) => e.id)
       : selectedIds;
   const items = evidence.filter((e) => ids.includes(e.id)).slice(0, 6);
-  const chars = items.reduce((sum, item) => sum + (extractions.find((x) => x.evidenceId === item.id)?.text.length ?? 0), 0);
+  const chars = items.reduce(
+    (sum, item) => sum + (extractions.find((x) => x.evidenceId === item.id)?.text.length ?? 0),
+    0,
+  );
 
   return (
     <Dialog open={Boolean(action)} onOpenChange={(open) => !open && cancel()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{action ? `${action.number} ${action.name}` : "Potvrdiť analýzu"}</DialogTitle>
+          <DialogTitle>
+            {action ? `${action.number} ${action.name}` : "Potvrdiť analýzu"}
+          </DialogTitle>
           <DialogDescription>
-            Na AI službu sa odošle extrahovaný text a metadáta z parsera. Pôvodné súbory ostávajú v tomto
-            zariadení a neodosielajú sa.
+            Na AI službu sa odošle extrahovaný text a metadáta z parsera. Pôvodné súbory ostávajú v
+            tomto zariadení a neodosielajú sa.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-sm">
@@ -148,7 +172,10 @@ function AiConfirmDialog() {
             <Button variant="ghost" onClick={cancel}>
               Zrušiť
             </Button>
-            <Button onClick={() => void confirm()} disabled={items.length === 0 && action?.requiredInputs.includes("evidence")}>
+            <Button
+              onClick={() => void confirm()}
+              disabled={items.length === 0 && action?.requiredInputs.includes("evidence")}
+            >
               Odoslať odvodený text
             </Button>
           </div>
@@ -162,6 +189,7 @@ function AuditDrawer() {
   const open = useWorkspace((s) => s.auditOpen);
   const setOpen = useWorkspace((s) => s.setAuditOpen);
   const audit = useWorkspace((s) => s.audit);
+  const { t } = useLocale();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -169,14 +197,21 @@ function AuditDrawer() {
         <SheetHeader>
           <SheetTitle>Záznam udalostí</SheetTitle>
         </SheetHeader>
+        <p className="px-4 pt-2 text-xs leading-relaxed text-muted-foreground">
+          {t("audit.intro")}
+        </p>
         <ScrollArea className="min-h-0 flex-1">
           <ul className="space-y-3 p-4">
-            {audit.length === 0 ? <li className="text-sm text-muted-foreground">Zatiaľ žiadne udalosti.</li> : null}
+            {audit.length === 0 ? (
+              <li className="text-sm text-muted-foreground">Zatiaľ žiadne udalosti.</li>
+            ) : null}
             {audit.map((event) => (
               <li key={event.id} className="border-b border-border pb-3">
                 <div className="flex items-center justify-between gap-2">
                   <Badge>{enumLabel(AUDIT_TYPE_LABEL, event.type)}</Badge>
-                  <span className="font-mono text-2xs text-subtle">{formatIso(event.createdAt)}</span>
+                  <span className="font-mono text-2xs text-subtle">
+                    {formatIso(event.createdAt)}
+                  </span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed">{event.message}</p>
               </li>

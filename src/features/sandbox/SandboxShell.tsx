@@ -6,8 +6,10 @@ import { CommandPalette } from "@/features/sandbox/CommandPalette";
 import { LeftSidebar } from "@/features/sandbox/LeftSidebar";
 import { StatusBar } from "@/features/sandbox/StatusBar";
 import { WorkspaceDialogs } from "@/features/sandbox/WorkspaceDialogs";
+import { MalteWorkspace } from "@/features/malte/MalteWorkspace";
 import { EvidenceViewer } from "@/features/viewer/EvidenceViewer";
 import { selectActiveCase, useWorkspace } from "@/features/workspace/store";
+import { WORKSPACE_ID } from "@/domain/types";
 import { extraTopInsetPx, readViewportFlags } from "@/lib/viewport";
 
 export function SandboxShell() {
@@ -15,6 +17,9 @@ export function SandboxShell() {
   const enterSandbox = useWorkspace((s) => s.enterSandbox);
   const pingAi = useWorkspace((s) => s.pingAi);
   const active = useWorkspace(selectActiveCase);
+  const workspaceMode = useWorkspace((s) => s.workspaceMode);
+  const activeCaseId = useWorkspace((s) => s.activeCaseId);
+  const showMalte = workspaceMode === "malte" && Boolean(activeCaseId);
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const [chromeInset, setChromeInset] = useState(0);
@@ -73,7 +78,9 @@ export function SandboxShell() {
           {leftOpen ? <X className="size-4" /> : <Menu className="size-4" />}
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-mono text-2xs tracking-widest text-accent uppercase">{active?.reference}</p>
+          <p className="truncate font-mono text-2xs tracking-widest text-accent uppercase">
+            {active?.reference}
+          </p>
           <p className="truncate text-xs">{active?.name}</p>
         </div>
         <Button
@@ -94,19 +101,44 @@ export function SandboxShell() {
         <aside className="hidden h-full w-64 shrink-0 border-r border-border lg:block">
           <LeftSidebar />
         </aside>
-        <EvidenceViewer />
-        <aside className="hidden h-full w-80 shrink-0 border-l border-border xl:block">
-          <AiPanel />
-        </aside>
+        {showMalte && activeCaseId ? (
+          <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
+            <MalteWorkspace
+              caseId={activeCaseId}
+              workspaceId={active?.workspaceId ?? WORKSPACE_ID}
+            />
+          </main>
+        ) : (
+          <EvidenceViewer />
+        )}
+        {showMalte ? null : (
+          <aside className="hidden h-full w-80 shrink-0 border-l border-border xl:block">
+            <AiPanel />
+          </aside>
+        )}
 
         <MobilePanel open={leftOpen} title="Prípad" onClose={() => setLeftOpen(false)}>
-          <LeftSidebar onEvidencePicked={() => setLeftOpen(false)} onOpenAi={() => {
-            setLeftOpen(false);
-            setRightOpen(true);
-          }} />
+          <LeftSidebar
+            onEvidencePicked={() => setLeftOpen(false)}
+            onOpenAi={() => {
+              setLeftOpen(false);
+              setRightOpen(true);
+            }}
+          />
         </MobilePanel>
-        <MobilePanel open={rightOpen} title="ForenX AI" onClose={() => setRightOpen(false)}>
-          <AiPanel />
+        <MobilePanel
+          open={rightOpen}
+          title={showMalte ? "Malte" : "ForenX AI"}
+          onClose={() => setRightOpen(false)}
+        >
+          {showMalte && activeCaseId ? (
+            <MalteWorkspace
+              caseId={activeCaseId}
+              workspaceId={active?.workspaceId ?? WORKSPACE_ID}
+            />
+          ) : (
+            <AiPanel />
+          )}
         </MobilePanel>
       </div>
       <StatusBar />

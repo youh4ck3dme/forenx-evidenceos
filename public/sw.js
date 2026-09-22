@@ -12,13 +12,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) =>
-        Promise.all(
-          PRECACHE.map((url) =>
-            cache.add(url).catch(() => undefined),
-          ),
-        ),
-      )
+      .then((cache) => Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => undefined))))
       .then(() => self.skipWaiting()),
   );
 });
@@ -34,16 +28,31 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-function isAsset(url) {
+function isBuildAsset(url) {
   return (
     url.pathname.startsWith("/assets/") ||
-    url.pathname.startsWith("/icons/") ||
-    url.pathname === "/favicon.svg" ||
-    url.pathname.endsWith(".webmanifest") ||
     url.pathname.endsWith(".css") ||
     url.pathname.endsWith(".js") ||
     url.pathname.endsWith(".woff2")
   );
+}
+
+function isIconOrManifest(url) {
+  return (
+    url.pathname.startsWith("/icons/") ||
+    url.pathname === "/favicon.svg" ||
+    url.pathname.endsWith(".webmanifest")
+  );
+}
+
+/**
+ * @param {Request} request
+ * @param {Response} response
+ */
+async function putAsset(request, response) {
+  if (!response || !response.ok) return;
+  const cache = await caches.open(CACHE);
+  await cache.put(request, response.clone());
 }
 
 function isAiOrApi(url) {
@@ -67,8 +76,34 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (isAsset(url)) {
-    event.respondWith(staleWhileRevalidate(request));
+  if (isBuildAsset(url)) {
+    event.respondWith(
+      (async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        const fresh = await fetch(request);
+        void putAsset(request, fresh.clone());
+        return fresh;
+      })(),
+    );
+    return;
+  }
+
+  if (isIconOrManifest(url)) {
+    event.respondWith(
+      (async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        try {
+          const fresh = await fetch(request);
+          void putAsset(request, fresh.clone());
+          return fresh;
+        } catch (error) {
+          if (cached) return cached;
+          throw error;
+        }
+      })(),
+    );
   }
 });
 
@@ -91,16 +126,4 @@ async function networkFirst(request) {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
-}
-
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(CACHE);
-  const cached = await cache.match(request);
-  const network = fetch(request)
-    .then((response) => {
-      if (response && response.ok) cache.put(request, response.clone());
-      return response;
-    })
-    .catch(() => undefined);
-  return cached || network || new Response("", { status: 504 });
 }

@@ -19,6 +19,7 @@ export function CommandPalette() {
   const exportCase = useWorkspace((s) => s.exportCase);
   const setSearchQuery = useWorkspace((s) => s.setSearchQuery);
   const setLeftView = useWorkspace((s) => s.setLeftView);
+  const setWorkspaceMode = useWorkspace((s) => s.setWorkspaceMode);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -55,6 +56,15 @@ export function CommandPalette() {
           </CommandItem>
           <CommandItem
             onSelect={() => {
+              setWorkspaceMode("malte");
+              setOpen(false);
+            }}
+          >
+            Otvoriť Malte
+          </CommandItem>
+          <CommandItem
+            onSelect={() => {
+              setWorkspaceMode("evidence");
               setLeftView("evidence");
               setSearchQuery("");
               setOpen(false);
