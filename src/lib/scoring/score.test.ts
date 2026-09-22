@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SCORE_ENGINE_VERSION, scoreEntity, scoreEvent, scoreFinding } from "./score.ts";
+import {
+  SCORE_ENGINE_VERSION,
+  scoreAnomaly,
+  scoreCaseRisk,
+  scoreEntity,
+  scoreEvent,
+  scoreFinding,
+  scoreQuestion,
+} from "./score.ts";
 
 const excerptRef = {
   evidenceId: "ev-1",
@@ -89,4 +97,49 @@ test("unnormalized timeline timestamp is penalized", () => {
   });
   assert.ok(norm.confidence > raw.confidence);
   assert.ok(raw.reasons.some((r) => r.includes("unnormalizedTime")));
+});
+
+test("question is capped as hypothesis", () => {
+  const q = scoreQuestion("Kto autorizoval prevod?", ["ev-1"]);
+  assert.ok(q.confidence <= 0.45);
+  assert.ok(q.reasons.some((r) => r.includes("HYPOTHESIS")));
+});
+
+test("anomaly is inferred and not a hypothesis cap", () => {
+  const a = scoreAnomaly("Dátum na faktúre nesedí s dátumom na výpise.", ["ev-1"]);
+  const q = scoreQuestion("Kto autorizoval prevod?", ["ev-1"]);
+  assert.ok(a.confidence >= q.confidence);
+});
+
+test("empty case risk is LOW 0", () => {
+  const risk = scoreCaseRisk([]);
+  assert.equal(risk.index, 0);
+  assert.equal(risk.band, "LOW");
+});
+
+test("rejected findings do not raise case risk", () => {
+  const live = scoreCaseRisk([
+    { epistemicClass: "OBSERVED", confidence: 0.8, reviewStatus: "ACCEPTED", statement: "Pečiatka na strane 2." },
+    { epistemicClass: "OBSERVED", confidence: 0.8, reviewStatus: "ACCEPTED", statement: "Suma 1200 EUR na výpise." },
+    { epistemicClass: "INFERRED", confidence: 0.7, reviewStatus: "PENDING", statement: "Nezrovnalosť: dátum nesedí." },
+  ]);
+  const withReject = scoreCaseRisk([
+    ...[
+      { epistemicClass: "OBSERVED" as const, confidence: 0.8, reviewStatus: "ACCEPTED" as const, statement: "Pečiatka na strane 2." },
+      { epistemicClass: "OBSERVED" as const, confidence: 0.8, reviewStatus: "ACCEPTED" as const, statement: "Suma 1200 EUR na výpise." },
+      { epistemicClass: "INFERRED" as const, confidence: 0.7, reviewStatus: "PENDING" as const, statement: "Nezrovnalosť: dátum nesedí." },
+    ],
+    { epistemicClass: "OBSERVED", confidence: 0.9, reviewStatus: "REJECTED", statement: "Falošné tvrdenie." },
+  ]);
+  assert.equal(live.index, withReject.index);
+  assert.equal(withReject.rejected, 1);
+  assert.ok(live.anomalies >= 1);
+});
+
+test("case risk is deterministic", () => {
+  const rows = [
+    { epistemicClass: "OBSERVED" as const, confidence: 0.84, reviewStatus: "PENDING" as const, statement: "Text A dlhší výrok." },
+    { epistemicClass: "HYPOTHESIS" as const, confidence: 0.2, reviewStatus: "PENDING" as const, statement: "Otázka: kto?" },
+  ];
+  assert.deepEqual(scoreCaseRisk(rows), scoreCaseRisk(rows));
 });
