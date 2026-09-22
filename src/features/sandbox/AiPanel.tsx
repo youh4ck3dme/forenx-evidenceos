@@ -5,9 +5,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { AiAvailability } from "@/domain/types";
 import { FORENSIC_ACTIONS, getAction } from "@/lib/ai/actions";
-import { useWorkspace } from "@/features/workspace/store";
+import { selectCaseRisk, useWorkspace } from "@/features/workspace/store";
 import { EPISTEMIC_LABEL, REVIEW_LABEL, RUN_STATUS_LABEL, enumLabel, skCount } from "@/lib/copy";
 import { cn } from "@/lib/utils";
+
+const BAND_SK: Record<string, string> = {
+  LOW: "nízke",
+  MODERATE: "stredné",
+  ELEVATED: "zvýšené",
+  HIGH: "vysoké",
+};
 
 export function AiPanel() {
   const availability = useWorkspace((s) => s.aiAvailability);
@@ -16,6 +23,7 @@ export function AiPanel() {
   const reviewFinding = useWorkspace((s) => s.reviewFinding);
   const runsAll = useWorkspace((s) => s.aiRuns);
   const selectedCount = useWorkspace((s) => s.selectedIds.length);
+  const risk = useWorkspace(selectCaseRisk);
   const disabled = availability !== "LIVE";
   const findings = findingsAll.slice(0, 12);
   const runs = runsAll.slice(0, 8);
@@ -30,7 +38,10 @@ export function AiPanel() {
         <p className="text-2xs text-muted-foreground">
           {selectedCount === 0
             ? "Nie je vybraný žiadny dôkaz. Úkony na úrovni prípadu pracujú s celým zoznamom."
-            : `${skCount(selectedCount, "vybraná položka", "vybrané položky", "vybraných položiek")}. Odosiela sa len extrahovaný text.`}
+            : `${skCount(selectedCount, "vybraná položka", "vybrané položky", "vybraných položiek")}. Na model ide len zapečatený excerpt.`}
+        </p>
+        <p className="mt-1 font-mono text-2xs text-subtle">
+          index {risk.index} · {BAND_SK[risk.band] ?? risk.band} · nie verdikt
         </p>
       </div>
       <ScrollArea className="h-56 shrink-0 border-b border-border">
