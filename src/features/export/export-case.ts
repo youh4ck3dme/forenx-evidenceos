@@ -20,7 +20,7 @@ import {
   SECTION_SOURCE_LABEL,
   enumLabel,
 } from "@/lib/copy";
-import { SCORE_ENGINE_VERSION, scoreCaseRisk, type CaseRiskResult } from "@/lib/scoring/score";
+import { SCORE_ENGINE_VERSION, formatRiskLine, scoreCaseRisk, type CaseRiskResult } from "@/lib/scoring/score";
 
 export interface CaseExportBundle {
   exportedAt: string;
@@ -74,9 +74,7 @@ export function exportToMarkdown(bundle: CaseExportBundle): string {
   lines.push(`- Exportované: ${bundle.exportedAt}`);
   lines.push(`- Popis: ${bundle.case.description || "—"}`);
   lines.push(`- Scoring engine: ${bundle.scoreEngineVersion}`);
-  lines.push(
-    `- Vyšetrovací index: ${bundle.risk.index} (${bundle.risk.band}) — nie je verdikt viny; počíta ho kód, nie model.`,
-  );
+  lines.push(`- ${formatRiskLine(bundle.risk)}`);
   lines.push(`- Zohľadnené zistenia: ${bundle.risk.considered}, odmietnuté: ${bundle.risk.rejected}`);
   lines.push("");
   lines.push("## Inventár dôkazov");

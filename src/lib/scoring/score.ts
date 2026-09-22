@@ -147,21 +147,23 @@ export function scoreEvent(input: {
 }
 
 export function scoreQuestion(text: string, evidenceIds: string[]): ScoreResult {
-  return scoreFinding({
+  const scored = scoreFinding({
     epistemicClass: "HYPOTHESIS",
     statement: `Otázka: ${text}`,
     sourceReferences: [],
     evidenceIds,
   });
+  return { ...scored, reasons: [...scored.reasons, "path:question"] };
 }
 
 export function scoreAnomaly(text: string, evidenceIds: string[]): ScoreResult {
-  return scoreFinding({
+  const scored = scoreFinding({
     epistemicClass: "INFERRED",
     statement: `Nezrovnalosť: ${text}`,
     sourceReferences: [],
     evidenceIds,
   });
+  return { ...scored, reasons: [...scored.reasons, "path:anomaly"] };
 }
 
 const CLASS_WEIGHT: Record<EpistemicClass, number> = {
@@ -179,7 +181,16 @@ export function bandForIndex(index: number): CaseRiskBand {
   return "LOW";
 }
 
-/** Case risk is an investigative workload index, not a guilt score. */
+/**
+ * Investigative workload index, not a guilt or authenticity verdict.
+ *
+ * Rejected findings are skipped.
+ * mass = Σ confidence × classWeight
+ *   OBSERVED 1 · DERIVED 0.8 · INFERRED 0.6 · HYPOTHESIS 0.25 · UNKNOWN 0.1
+ * index = round(clamp 0..100, (mass / max(3, considered)) × 100 + 4×anomalies + 2×questions)
+ * Anomaly: statement starts with "Nezrovnalos…". Question: statement starts with "Otázka:".
+ * Bands: <25 LOW · <50 MODERATE · <75 ELEVATED · else HIGH.
+ */
 export function scoreCaseRisk(findings: CaseRiskInput[]): CaseRiskResult {
   const reasons: string[] = [];
   if (findings.length === 0) {
