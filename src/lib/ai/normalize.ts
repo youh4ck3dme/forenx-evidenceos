@@ -8,6 +8,7 @@ import type {
 } from "@/domain/types";
 import { EVIDENCE_SECTIONS, EPISTEMIC_CLASSES } from "@/domain/types";
 import { createId } from "@/lib/ids";
+import { scoreEntity, scoreEvent, scoreFinding } from "@/lib/scoring/score";
 
 export interface NormalizedAnalysis {
   title: string;
@@ -29,12 +30,6 @@ function asObj(value: unknown): Loose {
 
 function asStr(value: unknown): string {
   return typeof value === "string" ? value : value == null ? "" : String(value);
-}
-
-function asNum(value: unknown, fallback = 0): number {
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(1, Math.max(0, n));
 }
 
 function asArr(value: unknown): unknown[] {
@@ -73,12 +68,19 @@ export function normalizeAnalysis(raw: unknown): NormalizedAnalysis {
   const findings: NormalizedAnalysis["findings"] = findingsIn.map((f) => {
     const item = asObj(f);
     const source = ref(item, asStr(item.fileName) || "evidence");
+    const statement = asStr(item.statement) || asStr(item.text);
+    const epistemicClass = epistemic(item.epistemicClass);
+    const sourceReferences = source ? [source] : [];
+    const evidenceIds = source ? [source.evidenceId] : [];
+    const scored = scoreFinding({ epistemicClass, statement, sourceReferences, evidenceIds });
     return {
-      evidenceIds: source ? [source.evidenceId] : [],
-      statement: asStr(item.statement) || asStr(item.text),
-      epistemicClass: epistemic(item.epistemicClass),
-      confidence: asNum(item.confidence, 0.5),
-      sourceReferences: source ? [source] : [],
+      evidenceIds,
+      statement,
+      epistemicClass,
+      confidence: scored.confidence,
+      sourceReferences,
+      scoreEngineVersion: scored.engineVersion,
+      scoreReasons: scored.reasons,
     };
   }).filter((f) => f.statement.trim().length > 0);
 
@@ -86,32 +88,43 @@ export function normalizeAnalysis(raw: unknown): NormalizedAnalysis {
     const item = asObj(e);
     const source = ref(item, asStr(item.fileName) || "evidence");
     const value = asStr(item.canonicalValue) || asStr(item.value);
+    const sourceReferences = source ? [source] : [];
+    const evidenceIds = source ? [source.evidenceId] : [];
+    const scored = scoreEntity({ value, evidenceIds, sourceReferences });
     return {
       entityType: asStr(item.entityType) || "OTHER_IDENTIFIER",
       canonicalValue: value,
       originalRepresentation: asStr(item.originalRepresentation) || value,
       aliases: asArr(item.aliases).map(asStr).filter(Boolean),
-      evidenceIds: source ? [source.evidenceId] : [],
-      sourceReferences: source ? [source] : [],
-      confidence: asNum(item.confidence, 0.5),
+      evidenceIds,
+      sourceReferences,
+      confidence: scored.confidence,
+      scoreEngineVersion: scored.engineVersion,
+      scoreReasons: scored.reasons,
     };
   }).filter((e) => e.canonicalValue.trim().length > 0);
 
   const events: NormalizedAnalysis["events"] = eventsIn.map((ev) => {
     const item = asObj(ev);
     const source = ref(item, asStr(item.fileName) || "evidence");
+    const sourceReferences = source ? [source] : [];
+    const action = asStr(item.action) || asStr(item.statement);
+    const timestampNormalized = asStr(item.timestampNormalized) || null;
+    const scored = scoreEvent({ action, timestampNormalized, sourceReferences });
     return {
       timestampOriginal: asStr(item.timestampOriginal) || "UNKNOWN",
-      timestampNormalized: asStr(item.timestampNormalized) || null,
+      timestampNormalized,
       timezone: asStr(item.timezone) || null,
       timePrecision: asStr(item.timePrecision) || "UNKNOWN",
       eventType: asStr(item.eventType) || "EVENT",
       actors: asArr(item.actors).map(asStr).filter(Boolean),
-      action: asStr(item.action) || asStr(item.statement),
+      action,
       objects: asArr(item.objects).map(asStr).filter(Boolean),
       location: asStr(item.location) || null,
-      sourceReferences: source ? [source] : [],
-      confidence: asNum(item.confidence, 0.5),
+      sourceReferences,
+      confidence: scored.confidence,
+      scoreEngineVersion: scored.engineVersion,
+      scoreReasons: scored.reasons,
     };
   }).filter((e) => e.action.trim().length > 0);
 
@@ -119,12 +132,21 @@ export function normalizeAnalysis(raw: unknown): NormalizedAnalysis {
   const anomalies = asArr(root.anomalies).map(asStr).filter(Boolean);
 
   if (findings.length === 0 && asStr(root.summary)) {
+    const statement = asStr(root.summary);
+    const scored = scoreFinding({
+      epistemicClass: "INFERRED",
+      statement,
+      sourceReferences: [],
+      evidenceIds: [],
+    });
     findings.push({
       evidenceIds: [],
-      statement: asStr(root.summary),
+      statement,
       epistemicClass: "INFERRED",
-      confidence: 0.4,
+      confidence: scored.confidence,
       sourceReferences: [],
+      scoreEngineVersion: scored.engineVersion,
+      scoreReasons: scored.reasons,
     });
   }
 
