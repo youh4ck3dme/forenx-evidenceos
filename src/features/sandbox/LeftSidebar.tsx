@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { EvidenceRecord } from "@/domain/types";
 import { selectActiveCase, useWorkspace, type LeftView } from "@/features/workspace/store";
+import { useLocale } from "@/lib/i18n";
 import {
   CLASSIFICATION_LABEL,
   ENTITY_TYPE_LABEL,
@@ -39,13 +40,18 @@ export function LeftSidebar({
   const setCreateCaseOpen = useWorkspace((s) => s.setCreateCaseOpen);
   const leftView = useWorkspace((s) => s.leftView);
   const setLeftView = useWorkspace((s) => s.setLeftView);
+  const workspaceMode = useWorkspace((s) => s.workspaceMode);
+  const setWorkspaceMode = useWorkspace((s) => s.setWorkspaceMode);
+  const { t } = useLocale();
   const searchQuery = useWorkspace((s) => s.searchQuery);
   const setSearchQuery = useWorkspace((s) => s.setSearchQuery);
   const evidence = useWorkspace((s) => s.evidence);
   const findings = useWorkspace((s) => s.findings);
   const entities = useWorkspace((s) => s.entities);
   const timeline = useWorkspace((s) => s.timeline);
-  const reportCount = useWorkspace((s) => s.aiRuns.filter((r) => r.actionId === "case-report").length);
+  const reportCount = useWorkspace(
+    (s) => s.aiRuns.filter((r) => r.actionId === "case-report").length,
+  );
   const selectedId = useWorkspace((s) => s.selectedId);
   const selectEvidence = useWorkspace((s) => s.selectEvidence);
 
@@ -64,10 +70,17 @@ export function LeftSidebar({
       <div className="border-b border-border px-3 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="font-mono text-2xs tracking-widest text-accent uppercase">{active?.reference ?? "—"}</p>
+            <p className="font-mono text-2xs tracking-widest text-accent uppercase">
+              {active?.reference ?? "—"}
+            </p>
             <h2 className="truncate text-sm font-medium">{active?.name ?? "Žiadny prípad"}</h2>
           </div>
-          <Button size="icon-sm" variant="outline" onClick={() => setCreateCaseOpen(true)} aria-label="Vytvoriť prípad">
+          <Button
+            size="icon-sm"
+            variant="outline"
+            onClick={() => setCreateCaseOpen(true)}
+            aria-label="Vytvoriť prípad"
+          >
             <Plus className="size-3.5" />
           </Button>
         </div>
@@ -90,6 +103,24 @@ export function LeftSidebar({
             ))}
           </select>
         ) : null}
+        <div className="mt-3 grid grid-cols-2 gap-1">
+          <Button
+            size="sm"
+            className="min-h-11"
+            variant={workspaceMode === "evidence" ? "default" : "secondary"}
+            onClick={() => setWorkspaceMode("evidence")}
+          >
+            {t("case.mode.evidence")}
+          </Button>
+          <Button
+            size="sm"
+            className="min-h-11"
+            variant={workspaceMode === "malte" ? "default" : "secondary"}
+            onClick={() => setWorkspaceMode("malte")}
+          >
+            {t("case.mode.malte")}
+          </Button>
+        </div>
       </div>
 
       {showSearch ? (
@@ -112,7 +143,9 @@ export function LeftSidebar({
             onClick={() => setLeftView(item.id)}
             className={cn(
               "flex min-h-11 items-center justify-between rounded-md px-2 text-xs",
-              leftView === item.id ? "bg-elevated text-foreground" : "text-muted-foreground hover:bg-elevated/60",
+              leftView === item.id
+                ? "bg-elevated text-foreground"
+                : "text-muted-foreground hover:bg-elevated/60",
             )}
           >
             <span className="flex items-center gap-2">
@@ -189,7 +222,9 @@ function EvidenceList({
     return (
       <div className="space-y-3 px-4 py-8 text-center">
         <p className="text-xs text-muted-foreground">
-          {q ? "Žiadny dôkaz nezodpovedá hľadaniu." : "V tomto prípade zatiaľ nie sú žiadne dôkazy."}
+          {q
+            ? "Žiadny dôkaz nezodpovedá hľadaniu."
+            : "V tomto prípade zatiaľ nie sú žiadne dôkazy."}
         </p>
         {!q ? (
           <>
@@ -252,10 +287,14 @@ function TimelineList({ query }: { query: string }) {
   const events = useWorkspace((s) => s.timeline);
   const q = query.trim().toLowerCase();
   const filtered = q
-    ? events.filter((e) => `${e.action} ${e.timestampOriginal} ${e.actors.join(" ")}`.toLowerCase().includes(q))
+    ? events.filter((e) =>
+        `${e.action} ${e.timestampOriginal} ${e.actors.join(" ")}`.toLowerCase().includes(q),
+      )
     : events;
   const sorted = [...filtered].sort((a, b) =>
-    (a.timestampNormalized ?? a.timestampOriginal).localeCompare(b.timestampNormalized ?? b.timestampOriginal),
+    (a.timestampNormalized ?? a.timestampOriginal).localeCompare(
+      b.timestampNormalized ?? b.timestampOriginal,
+    ),
   );
   if (!sorted.length) return <Empty label="Časová os je zatiaľ prázdna." />;
   return (
@@ -275,7 +314,9 @@ function EntityList({ query }: { query: string }) {
   const entities = useWorkspace((s) => s.entities);
   const q = query.trim().toLowerCase();
   const filtered = q
-    ? entities.filter((e) => `${e.canonicalValue} ${e.entityType} ${e.aliases.join(" ")}`.toLowerCase().includes(q))
+    ? entities.filter((e) =>
+        `${e.canonicalValue} ${e.entityType} ${e.aliases.join(" ")}`.toLowerCase().includes(q),
+      )
     : entities;
   if (!filtered.length) return <Empty label="Zatiaľ neboli vytiahnuté žiadne entity." />;
   return (
@@ -283,7 +324,9 @@ function EntityList({ query }: { query: string }) {
       {filtered.map((entity) => (
         <li key={entity.id} className="px-3 py-2">
           <p className="text-xs">{entity.canonicalValue}</p>
-          <p className="font-mono text-2xs text-subtle">{enumLabel(ENTITY_TYPE_LABEL, entity.entityType)}</p>
+          <p className="font-mono text-2xs text-subtle">
+            {enumLabel(ENTITY_TYPE_LABEL, entity.entityType)}
+          </p>
         </li>
       ))}
     </ul>
@@ -322,9 +365,16 @@ function ReportList({ onOpenAi }: { onOpenAi?: () => void }) {
             Otvoriť panel AI
           </Button>
         ) : (
-          <p className="text-center text-xs text-muted-foreground">Spustite ju v paneli AI vpravo.</p>
+          <p className="text-center text-xs text-muted-foreground">
+            Spustite ju v paneli AI vpravo.
+          </p>
         )}
-        <Button variant="outline" size="sm" className="w-full min-h-11" onClick={() => void exportCase("markdown")}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full min-h-11"
+          onClick={() => void exportCase("markdown")}
+        >
           Exportovať zoznam dôkazov (Markdown)
         </Button>
       </div>
@@ -334,14 +384,21 @@ function ReportList({ onOpenAi }: { onOpenAi?: () => void }) {
     <div className="space-y-3 p-3">
       {runs.map((run) => (
         <article key={run.id} className="rounded-md border border-border p-3">
-          <p className="font-mono text-2xs text-accent">{enumLabel(RUN_STATUS_LABEL, run.status)}</p>
+          <p className="font-mono text-2xs text-accent">
+            {enumLabel(RUN_STATUS_LABEL, run.status)}
+          </p>
           <p className="mt-1 text-xs">{run.summary || "Správa o prípade"}</p>
           <p className="mt-2 font-mono text-2xs text-subtle">
             {run.model ?? "—"} · {run.promptVersion}
           </p>
         </article>
       ))}
-      <Button variant="outline" size="sm" className="w-full" onClick={() => void exportCase("markdown")}>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => void exportCase("markdown")}
+      >
         Exportovať Markdown
       </Button>
     </div>

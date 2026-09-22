@@ -28,6 +28,7 @@ import { loadSettings, saveSettings } from "@/lib/storage/settings";
 import { toast } from "sonner";
 
 export type LeftView = "evidence" | "timeline" | "entities" | "findings" | "reports";
+export type WorkspaceMode = "evidence" | "malte";
 
 interface WorkspaceState {
   hydrated: boolean;
@@ -43,6 +44,7 @@ interface WorkspaceState {
   selectedId: string | null;
   selectedIds: string[];
   leftView: LeftView;
+  workspaceMode: WorkspaceMode;
   searchQuery: string;
   commandOpen: boolean;
   auditOpen: boolean;
@@ -60,10 +62,17 @@ interface WorkspaceState {
   refreshStorage: () => Promise<void>;
   pingAi: () => Promise<void>;
   setActiveCase: (id: string) => Promise<void>;
-  createCase: (input: { name: string; description: string; classification: Classification; tags: string[] }) => Promise<CaseRecord>;
+  createCase: (input: {
+    name: string;
+    description: string;
+    classification: Classification;
+    tags: string[];
+  }) => Promise<CaseRecord>;
   importFiles: (files: File[]) => Promise<void>;
   selectEvidence: (id: string | null, additive?: boolean) => void;
   setLeftView: (view: LeftView) => void;
+  setWorkspaceMode: (mode: WorkspaceMode) => void;
+  refreshAudit: () => Promise<void>;
   setSearchQuery: (q: string) => void;
   setCommandOpen: (open: boolean) => void;
   setAuditOpen: (open: boolean) => void;
@@ -118,6 +127,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   selectedId: null,
   selectedIds: [],
   leftView: "evidence",
+  workspaceMode: "evidence",
   searchQuery: "",
   commandOpen: false,
   auditOpen: false,
@@ -144,7 +154,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
       if (record.name === "Untitled investigation" || record.name === "Local sandbox") {
         const name = "Lokálne vyšetrovanie";
         const description =
-          record.description === "Local sandbox case. Evidence remains on this device." || !record.description
+          record.description === "Local sandbox case. Evidence remains on this device." ||
+          !record.description
             ? "Lokálny prípad. Dôkazy ostávajú v tomto zariadení."
             : record.description;
         await db.cases.update(record.id, { name, description });
@@ -153,11 +164,20 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
       }
     }
     let activeCaseId = settings.activeCaseId;
-    if (activeCaseId && !cases.some((c) => c.id === activeCaseId)) activeCaseId = cases[0]?.id ?? null;
+    if (activeCaseId && !cases.some((c) => c.id === activeCaseId))
+      activeCaseId = cases[0]?.id ?? null;
     if (!activeCaseId) activeCaseId = cases[0]?.id ?? null;
     const slice = activeCaseId
       ? await loadCaseSlice(activeCaseId)
-      : { evidence: [], extractions: [], findings: [], entities: [], timeline: [], aiRuns: [], audit: [] };
+      : {
+          evidence: [],
+          extractions: [],
+          findings: [],
+          entities: [],
+          timeline: [],
+          aiRuns: [],
+          audit: [],
+        };
     set({
       hydrated: true,
       cases,
@@ -255,7 +275,10 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   importFiles: async (files) => {
     const caseId = get().activeCaseId;
     if (!caseId || files.length === 0) return;
-    set({ ingestBusy: true, ingestMessage: `Vkladám ${skCount(files.length, "súbor", "súbory", "súborov")}…` });
+    set({
+      ingestBusy: true,
+      ingestMessage: `Vkladám ${skCount(files.length, "súbor", "súbory", "súborov")}…`,
+    });
     const db = getDb();
     const hashes = new Map(get().evidence.map((e) => [e.sha256, e.id]));
     const imported: EvidenceRecord[] = [];
@@ -341,6 +364,19 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   },
 
   setLeftView: (leftView) => set({ leftView }),
+  setWorkspaceMode: (workspaceMode) => set({ workspaceMode }),
+  refreshAudit: async () => {
+    if (typeof indexedDB === "undefined") return;
+    const caseId = get().activeCaseId;
+    if (!caseId) return;
+    const audit = await getDb()
+      .auditEvents.where("caseId")
+      .equals(caseId)
+      .reverse()
+      .sortBy("createdAt");
+    audit.reverse();
+    set({ audit });
+  },
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setCommandOpen: (commandOpen) => set({ commandOpen }),
   setAuditOpen: (auditOpen) => set({ auditOpen }),
@@ -358,7 +394,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
       return;
     }
     const needsEvidence = action.requiredInputs.includes("evidence");
-    if (needsEvidence && get().selectedIds.length === 0 && action.id !== "case-report" && action.id !== "evidence-gaps" && action.id !== "investigator-questions") {
+    if (
+      needsEvidence &&
+      get().selectedIds.length === 0 &&
+      action.id !== "case-report" &&
+      action.id !== "evidence-gaps" &&
+      action.id !== "investigator-questions"
+    ) {
       toast.error("Pred spustením tohto úkonu vyberte dôkaz.");
       return;
     }
@@ -379,7 +421,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
     const selected = get().selectedIds;
     let evidenceIds =
-      action.id === "case-report" || action.id === "evidence-gaps" || action.id === "investigator-questions"
+      action.id === "case-report" ||
+      action.id === "evidence-gaps" ||
+      action.id === "investigator-questions"
         ? get().evidence.map((e) => e.id)
         : selected;
     if (evidenceIds.length === 0) evidenceIds = get().evidence.map((e) => e.id);
@@ -405,7 +449,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
     try {
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
-        throw Object.assign(new Error("Bez pripojenia — analýza sa neodoslala."), { code: "OFFLINE" });
+        throw Object.assign(new Error("Bez pripojenia — analýza sa neodoslala."), {
+          code: "OFFLINE",
+        });
       }
       const extractionByEv = new Map(get().extractions.map((e) => [e.evidenceId, e]));
       const payload = evidenceIds
@@ -424,13 +470,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
           text: extractionByEv.get(item.id)?.text ?? "",
         }));
 
-      const findingsDigest =
-        action.requiredInputs.includes("findings")
-          ? get()
-              .findings.slice(0, 40)
-              .map((f) => `[${f.epistemicClass} ${f.confidence.toFixed(2)}] ${f.statement}`)
-              .join("\n")
-          : undefined;
+      const findingsDigest = action.requiredInputs.includes("findings")
+        ? get()
+            .findings.slice(0, 40)
+            .map((f) => `[${f.epistemicClass} ${f.confidence.toFixed(2)}] ${f.statement}`)
+            .join("\n")
+        : undefined;
 
       const result = await analyzeEvidence({
         data: {
@@ -533,14 +578,21 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
           set((s) => ({
             evidence: s.evidence.map((e) =>
               e.id === evidenceId
-                ? { ...e, section: normalized.primarySection!, sectionSource: "AI", status: "ANALYZED" }
+                ? {
+                    ...e,
+                    section: normalized.primarySection!,
+                    sectionSource: "AI",
+                    status: "ANALYZED",
+                  }
                 : e,
             ),
           }));
         } else if (item) {
           await getDb().evidence.update(evidenceId, { status: "ANALYZED" });
           set((s) => ({
-            evidence: s.evidence.map((e) => (e.id === evidenceId ? { ...e, status: "ANALYZED" } : e)),
+            evidence: s.evidence.map((e) =>
+              e.id === evidenceId ? { ...e, status: "ANALYZED" } : e,
+            ),
           }));
         }
       } else {
@@ -548,7 +600,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
           await getDb().evidence.update(id, { status: "ANALYZED" });
         }
         set((s) => ({
-          evidence: s.evidence.map((e) => (evidenceIds.includes(e.id) ? { ...e, status: "ANALYZED" } : e)),
+          evidence: s.evidence.map((e) =>
+            evidenceIds.includes(e.id) ? { ...e, status: "ANALYZED" } : e,
+          ),
         }));
       }
 
@@ -578,12 +632,24 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
         aiRuns: s.aiRuns.map((r) => (r.id === run.id ? completed : r)),
         audit: [done, ...s.audit],
         aiAvailability: "LIVE",
-        leftView: action.id === "timeline" ? "timeline" : action.id === "entity-extraction" ? "entities" : action.id === "case-report" ? "reports" : "findings",
+        leftView:
+          action.id === "timeline"
+            ? "timeline"
+            : action.id === "entity-extraction"
+              ? "entities"
+              : action.id === "case-report"
+                ? "reports"
+                : "findings",
       }));
       toast.success(`${action.name} — dokončené`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Analýza zlyhala";
-      const failed: AiRunRecord = { ...run, status: "FAILED", completedAt: new Date().toISOString(), error: message };
+      const failed: AiRunRecord = {
+        ...run,
+        status: "FAILED",
+        completedAt: new Date().toISOString(),
+        error: message,
+      };
       await getDb().aiRuns.put(failed);
       const failAudit = await appendAudit({
         caseId,
@@ -604,7 +670,9 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   setSection: async (evidenceId, section) => {
     await getDb().evidence.update(evidenceId, { section, sectionSource: "HUMAN" });
     set((s) => ({
-      evidence: s.evidence.map((e) => (e.id === evidenceId ? { ...e, section, sectionSource: "HUMAN" } : e)),
+      evidence: s.evidence.map((e) =>
+        e.id === evidenceId ? { ...e, section, sectionSource: "HUMAN" } : e,
+      ),
     }));
   },
 

@@ -1,13 +1,20 @@
 import Dexie, { type Table } from "dexie";
 import type {
   AiRunRecord,
+  AlertRecord,
   AuditEventRecord,
   CaseRecord,
+  CommodityRecord,
+  DetectionRuleConfig,
+  DetectionRunRecord,
   EntityRecord,
   EvidenceRecord,
   ExtractionRecord,
   FindingRecord,
+  RelationshipRecord,
+  SubjectRecord,
   TimelineEventRecord,
+  TransactionRecord,
 } from "@/domain/types";
 
 export interface BlobRecord {
@@ -28,10 +35,17 @@ class ForenxDB extends Dexie {
   aiRuns!: Table<AiRunRecord, string>;
   auditEvents!: Table<AuditEventRecord, string>;
   blobs!: Table<BlobRecord, string>;
+  subjects!: Table<SubjectRecord, string>;
+  transactions!: Table<TransactionRecord, string>;
+  commodities!: Table<CommodityRecord, string>;
+  relationships!: Table<RelationshipRecord, string>;
+  alerts!: Table<AlertRecord, string>;
+  detectionConfigs!: Table<DetectionRuleConfig, string>;
+  detectionRuns!: Table<DetectionRunRecord, string>;
 
   constructor() {
     super("forenx-evidence-os");
-    this.version(1).stores({
+    const core = {
       cases: "id, workspaceId, updatedAt, reference",
       evidence: "id, caseId, sha256, status, importedAt, section",
       extractions: "id, evidenceId, caseId",
@@ -41,6 +55,17 @@ class ForenxDB extends Dexie {
       aiRuns: "id, caseId, actionId, createdAt, status",
       auditEvents: "id, caseId, type, createdAt",
       blobs: "id, caseId, evidenceId, kind",
+    };
+    this.version(1).stores(core);
+    this.version(2).stores({
+      ...core,
+      subjects: "id, caseId, workspaceId, name, kind, riskScore",
+      transactions: "id, caseId, workspaceId, bookedAt, amount, fromSubjectId, toSubjectId",
+      commodities: "id, caseId, workspaceId, serialNumber, licenseNumber",
+      relationships: "id, caseId, fromSubjectId, toSubjectId, relationType",
+      alerts: "id, caseId, status, severity, score, createdAt, ruleId",
+      detectionConfigs: "id, caseId",
+      detectionRuns: "id, caseId, startedAt, ruleVersion",
     });
   }
 }

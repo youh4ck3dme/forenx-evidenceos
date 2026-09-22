@@ -1,9 +1,4 @@
-export const CLASSIFICATIONS = [
-  "PUBLIC",
-  "INTERNAL",
-  "CONFIDENTIAL",
-  "RESTRICTED",
-] as const;
+export const CLASSIFICATIONS = ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"] as const;
 export type Classification = (typeof CLASSIFICATIONS)[number];
 
 export const CASE_STATUSES = ["OPEN", "ACTIVE", "CLOSED", "ARCHIVED"] as const;
@@ -42,12 +37,7 @@ export const EPISTEMIC_CLASSES = [
 ] as const;
 export type EpistemicClass = (typeof EPISTEMIC_CLASSES)[number];
 
-export const REVIEW_STATUSES = [
-  "PENDING",
-  "ACCEPTED",
-  "REJECTED",
-  "NEEDS_REVIEW",
-] as const;
+export const REVIEW_STATUSES = ["PENDING", "ACCEPTED", "REJECTED", "NEEDS_REVIEW"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 export const AUDIT_TYPES = [
@@ -61,6 +51,11 @@ export const AUDIT_TYPES = [
   "AI_ANALYSIS_FAILED",
   "FINDING_REVIEWED",
   "EXPORT_CREATED",
+  "MALTE_IMPORT",
+  "MALTE_DETECTION_RUN",
+  "MALTE_ALERT_REVIEWED",
+  "MALTE_REPORT_EXPORTED",
+  "MALTE_WEIGHTS_UPDATED",
 ] as const;
 export type AuditType = (typeof AUDIT_TYPES)[number];
 
@@ -223,10 +218,155 @@ export interface AiRunRecord {
 export interface AuditEventRecord {
   id: string;
   caseId: string | null;
+  workspaceId?: string;
   type: AuditType;
   createdAt: string;
   message: string;
   payload?: Record<string, string | number | boolean | null>;
+  /** Nested Malte metadata (weights, row samples). Flat payload stays for other events. */
+  meta?: Record<string, unknown>;
+  /** SHA-256 of the previous audit tip, or that tip's id before the chain existed. */
+  prevHash?: string;
+  /** SHA-256 of this event's canonical payload including prevHash. */
+  eventHash?: string;
+}
+
+/** Malte — financial investigation domain */
+
+export type SubjectKind = "PERSON" | "COMPANY" | "SHELL_SUSPECT" | "ACCOUNT" | "OTHER";
+
+export interface SubjectRecord {
+  id: string;
+  caseId: string;
+  workspaceId: string;
+  kind: SubjectKind;
+  name: string;
+  ico?: string;
+  country?: string;
+  accountIban?: string;
+  riskScore: number;
+  flags: string[];
+  createdAt: string;
+  sourceEvidenceId?: string;
+}
+
+export interface TransactionRecord {
+  id: string;
+  caseId: string;
+  workspaceId: string;
+  bookedAt: string;
+  amount: number;
+  currency: string;
+  fromSubjectId?: string;
+  toSubjectId?: string;
+  fromLabel: string;
+  toLabel: string;
+  description: string;
+  reference?: string;
+  countryFrom?: string;
+  countryTo?: string;
+  commodityCode?: string;
+  sourceEvidenceId?: string;
+  sourceRow?: number;
+  riskScore: number;
+  createdAt: string;
+}
+
+export interface CommodityRecord {
+  id: string;
+  caseId: string;
+  workspaceId: string;
+  name: string;
+  serialNumber?: string;
+  licenseNumber?: string;
+  category?: string;
+  subjectId?: string;
+  createdAt: string;
+}
+
+export interface RelationshipRecord {
+  id: string;
+  caseId: string;
+  workspaceId: string;
+  fromSubjectId: string;
+  toSubjectId: string;
+  relationType: string;
+  weight: number;
+  evidenceIds: string[];
+  createdAt: string;
+}
+
+export type AlertSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type AlertStatus = "NEW" | "REVIEWED" | "FALSE_POSITIVE" | "ESCALATED";
+
+export interface ScoreFactor {
+  code: string;
+  label: string;
+  weight: number;
+  contribution: number;
+  evidenceRef?: string;
+  sourceRow?: number;
+}
+
+export interface AlertRecord {
+  id: string;
+  caseId: string;
+  workspaceId: string;
+  ruleId: string;
+  ruleVersion: string;
+  title: string;
+  description: string;
+  severity: AlertSeverity;
+  status: AlertStatus;
+  score: number;
+  factors: ScoreFactor[];
+  subjectIds: string[];
+  transactionIds: string[];
+  assignedTo?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  createdAt: string;
+  detectionRunId: string;
+  /** Reviewed finding that no longer fires. The disposition is kept. */
+  obsolete?: boolean;
+}
+
+export interface DetectionWeights {
+  shellCompany: number;
+  transactionAnomaly: number;
+  licenseSerial: number;
+  networkChain: number;
+  crossBorder: number;
+  highValueBurst: number;
+}
+
+export interface DetectionRuleConfig {
+  id: string;
+  caseId: string;
+  workspaceId: string;
+  ruleVersion: string;
+  weights: DetectionWeights;
+  thresholds: {
+    alertMinScore: number;
+    highValueAmount: number;
+    shellNameHints: string[];
+  };
+  updatedAt: string;
+}
+
+export interface DetectionRunRecord {
+  id: string;
+  caseId: string;
+  workspaceId: string;
+  ruleVersion: string;
+  startedAt: string;
+  completedAt: string;
+  alertCount: number;
+  subjectCount: number;
+  transactionCount: number;
+  weightsSnapshot: DetectionWeights;
+  inputHash: string;
 }
 
 export type AiAvailability = "LIVE" | "UNAVAILABLE" | "OFFLINE" | "RUNNING";
