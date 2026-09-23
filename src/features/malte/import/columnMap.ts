@@ -181,7 +181,9 @@ const HEADER_RULES: { key: TxColumnKey; test: RegExp }[] = [
   },
   {
     key: "commodityCode",
-    test: /\b(commodity|commodities|hs code|hscode|tariff|weapon|zbran\w*|serial|licence|license)\b/,
+    // `HS kód` folds to `hs kod` (diacritics stripped). Match that whole token
+    // and close aliases; do not match a bare `kod` / `code` / `od`.
+    test: /\b(commodity|commodities|hs codes?|hscode|hs kod\w*|hskod\w*|hs cislo|kod\w* hs|kodhs|cislo hs|tariff|weapon|zbran\w*|serial|licence|license)\b/,
   },
   { key: "bookedAt", test: /\b(date|datum|booked|value date|posted|booking date)\b/ },
   { key: "amount", test: /\b(amount|suma|sum|value|castka|ciastka)\b/ },

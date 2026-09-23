@@ -28,6 +28,7 @@ import {
   updateDetectionWeights,
 } from "@/features/malte/detection/engine";
 import { findSubjectPath, NetworkGraph } from "@/features/malte/graph/NetworkGraph";
+import { formatAlertCountLabel } from "@/features/malte/alertMetrics";
 import { exportMaltePdfReport } from "@/features/malte/report/exportPdfReport";
 import { DEFAULT_WEIGHTS } from "@/features/malte/detection/defaults";
 
@@ -93,7 +94,7 @@ export function MalteWorkspace({ caseId, workspaceId }: { caseId: string; worksp
       const result = await runMalteDetection(caseId, workspaceId);
       await reload();
       setStatusMsg(
-        `Detection complete: ${result.alerts.length} alerts · rule ${result.alerts[0]?.ruleVersion ?? "v1"}`,
+        `Detection complete: ${formatAlertCountLabel(result.alerts)} · rule ${result.alerts[0]?.ruleVersion ?? "v1"}`,
       );
       setView("alerts");
     } catch (e) {
@@ -184,7 +185,7 @@ export function MalteWorkspace({ caseId, workspaceId }: { caseId: string; worksp
             Malte triage
           </div>
           <div className="text-xs text-muted-foreground">
-            {transactions.length} tx · {subjects.length} subjects · {alerts.length} alerts
+            {transactions.length} tx · {subjects.length} subjects · {formatAlertCountLabel(alerts)}
           </div>
         </div>
         {(
@@ -376,7 +377,17 @@ export function MalteWorkspace({ caseId, workspaceId }: { caseId: string; worksp
                     <span className="font-mono text-[10px] text-subtle">
                       {selected.ruleId} · {selected.ruleVersion}
                     </span>
+                    {selected.obsolete && (
+                      <span className="font-mono text-[10px] tracking-wide text-warn uppercase">
+                        Obsolete
+                      </span>
+                    )}
                   </div>
+                  {selected.obsolete && (
+                    <p className="mt-2 text-xs text-warn">
+                      This reviewed finding no longer fires. It is excluded from live totals.
+                    </p>
+                  )}
                   <h3 className="mt-2 text-sm font-semibold text-foreground">{selected.title}</h3>
                   <p className="mt-1 text-xs text-muted-foreground">{selected.description}</p>
                   <p className="mt-1 font-mono text-[10px] text-subtle">

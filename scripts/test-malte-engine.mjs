@@ -15,6 +15,7 @@ import {
   excelSerialToCalendarDate,
   parseAmount,
   parseBookedAt,
+  normalizeHeaderLabel,
   parseCsvText,
   parseTabularFile,
   rowsToTransactions,
@@ -25,8 +26,11 @@ import {
   preserveAlertReviews,
   runMalteDetection,
 } from "../src/features/malte/detection/engine.ts";
+import { formatAlertCountLabel } from "../src/features/malte/alertMetrics.ts";
+import { buildMalteReportLines } from "../src/features/malte/report/exportPdfReport.ts";
 import {
   localAlertRepository,
+  localDetectionRunRepository,
   localTransactionRepository,
 } from "../src/lib/storage/repositories.ts";
 
@@ -95,6 +99,37 @@ assert.deepEqual(falseFriends, [
   "fromLabel",
   "countryFrom",
   "commodityCode",
+]);
+
+assert.equal(normalizeHeaderLabel("HS kód"), "hs kod");
+assert.equal(normalizeHeaderLabel("Číslo HS"), "cislo hs");
+const hsHeaders = suggestColumnMap([
+  "HS kód",
+  "HS kod",
+  "HS-kód",
+  "Kód HS",
+  "Číslo HS",
+  "HS číslo",
+  "HSKod",
+  "Od",
+  "Komu",
+  "Krajina od",
+  "Kód",
+  "Code",
+]);
+assert.deepEqual(hsHeaders, [
+  "commodityCode",
+  "commodityCode",
+  "commodityCode",
+  "commodityCode",
+  "commodityCode",
+  "commodityCode",
+  "commodityCode",
+  "fromLabel",
+  "toLabel",
+  "countryFrom",
+  "skip",
+  "skip",
 ]);
 
 const imported = rowsToTransactions(sheet, fixtureMap, {
@@ -265,6 +300,33 @@ for (const [id, status, note] of [
   assert.equal(dupes.length, 1, `stable finding ${alertStableKey(found)} was duplicated`);
 }
 
+const ghost = {
+  ...alerts2[0],
+  id: "alert_ghost",
+  ruleId: "tx_anomaly",
+  status: "ESCALATED",
+  score: 44,
+  title: "Ghost finding",
+  transactionIds: ["tx_does_not_exist"],
+  subjectIds: ["subj_ghost"],
+  obsolete: false,
+  reviewedBy: "analyst",
+  reviewedAt,
+};
+await localAlertRepository.putMany([ghost]);
+const third = await runMalteDetection(caseId, workspaceId);
+const alerts3 = await localAlertRepository.listByCase(caseId);
+const ghostAfter = alerts3.find((alert) => alert.id === "alert_ghost");
+assert.ok(ghostAfter, "reviewed finding that stopped firing was dropped");
+assert.equal(ghostAfter.obsolete, true);
+const live3 = alerts3.filter((alert) => !alert.obsolete);
+assert.equal(live3.length + 1, alerts3.length);
+assert.equal(formatAlertCountLabel(third.alerts), `${live3.length} alerts · 1 obsolete`);
+assert.equal(third.alerts.filter((alert) => alert.obsolete).length, 1);
+const runs = await localDetectionRunRepository.listByCase(caseId);
+assert.equal(runs[0].alertCount, live3.length);
+assert.ok(runs[0].alertCount < alerts3.length);
+
 const shellHits = imported.transactions.filter((tx) => {
   const blob = `${tx.fromLabel} ${tx.toLabel}`.toLowerCase();
   return ["s.r.o.", "ltd", "offshore", "shell", "holding", "babcan"].some((hint) =>
@@ -354,6 +416,60 @@ assert.equal(
   reconciled.some((alert) => alert.id === "alert_new_gone"),
   false,
 );
+assert.equal(formatAlertCountLabel(reconciled), "1 alerts · 1 obsolete");
+assert.equal(formatAlertCountLabel(reconciled.filter((alert) => !alert.obsolete)), "1 alerts");
+
+const reportBody = buildMalteReportLines({
+  caseRecord: { reference: "REV-1", name: "Review" },
+  alerts: reconciled,
+  subjects: [],
+  transactions: [],
+  config: null,
+})
+  .map((line) => line.text)
+  .join("\n");
+assert.match(reportBody, /1 alerts \(0 critical, 1 high\)/);
+assert.match(reportBody, /1 obsolete reviewed finding excluded from these totals/);
+const liveReport = reportBody.split("Obsolete reviewed findings")[0];
+assert.match(liveReport, /refreshed/);
+assert.doesNotMatch(liveReport, /\[OBSOLETE\]/);
+assert.doesNotMatch(liveReport, /40\/100 — t/);
+assert.match(reportBody, /\[OBSOLETE\] \[HIGH\] 40\/100 — t \(ESCALATED\)/);
+
+const mixedReport = buildMalteReportLines({
+  caseRecord: { reference: "MIX-1", name: "Mix" },
+  alerts: [
+    finding({
+      id: "alert_mix_live",
+      ruleId: "tx_anomaly",
+      status: "NEW",
+      score: 70,
+      severity: "HIGH",
+      title: "Live only",
+      obsolete: false,
+      transactionIds: ["tx_mix"],
+    }),
+    finding({
+      id: "alert_mix_stale",
+      ruleId: "license_serial",
+      status: "FALSE_POSITIVE",
+      score: 99,
+      severity: "CRITICAL",
+      title: "Gone critical",
+      obsolete: true,
+      transactionIds: ["tx_mix_gone"],
+    }),
+  ],
+  subjects: [],
+  transactions: [{}, {}],
+  config: null,
+})
+  .map((line) => line.text)
+  .join("\n");
+assert.match(mixedReport, /1 alerts \(0 critical, 1 high\) across 0 subjects and 2 transactions/);
+assert.match(mixedReport, /1 obsolete reviewed finding excluded from these totals/);
+assert.doesNotMatch(mixedReport.split("Obsolete reviewed findings")[0], /Gone critical/);
+assert.match(mixedReport, /\[OBSOLETE\] \[CRITICAL\] 99\/100 — Gone critical \(FALSE_POSITIVE\)/);
 
 console.log("malte engine OK", {
   rows: imported.transactions.length,
