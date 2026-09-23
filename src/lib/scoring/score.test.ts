@@ -9,6 +9,7 @@ import {
   scoreEvent,
   scoreFinding,
   scoreQuestion,
+  stableScoreCaseRisk,
 } from "./score.ts";
 
 const excerptRef = {
@@ -130,6 +131,8 @@ test("workspace store does not hardcode question or anomaly confidence", () => {
   assert.match(src, /scoreEngineVersion:\s*scored\.engineVersion/);
   assert.match(src, /scoreReasons:\s*scored\.reasons/);
   assert.match(src, /export function selectCaseRisk/);
+  assert.match(src, /return stableScoreCaseRisk\(state\.findings\)/);
+  assert.doesNotMatch(src, /return scoreCaseRisk\(state\.findings\)/);
 });
 
 test("empty case risk is LOW 0", () => {
@@ -155,6 +158,26 @@ test("rejected findings do not raise case risk", () => {
   assert.equal(live.index, withReject.index);
   assert.equal(withReject.rejected, 1);
   assert.ok(live.anomalies >= 1);
+});
+
+test("stable case risk keeps one object per findings array", () => {
+  const rows = [
+    {
+      epistemicClass: "OBSERVED" as const,
+      confidence: 0.84,
+      reviewStatus: "PENDING" as const,
+      statement: "Text A dlhší výrok.",
+    },
+  ];
+  const first = stableScoreCaseRisk(rows);
+  assert.equal(stableScoreCaseRisk(rows), first);
+  assert.deepEqual(stableScoreCaseRisk(rows), scoreCaseRisk(rows));
+  const copy = rows.slice();
+  const next = stableScoreCaseRisk(copy);
+  assert.notEqual(next, first);
+  assert.deepEqual(next, first);
+  const empty: typeof rows = [];
+  assert.equal(stableScoreCaseRisk(empty), stableScoreCaseRisk(empty));
 });
 
 test("case risk is deterministic", () => {
