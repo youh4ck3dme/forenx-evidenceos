@@ -191,7 +191,7 @@ export function bandForIndex(index: number): CaseRiskBand {
  * Anomaly: statement starts with "Nezrovnalos…". Question: statement starts with "Otázka:".
  * Bands: <25 LOW · <50 MODERATE · <75 ELEVATED · else HIGH.
  */
-export function scoreCaseRisk(findings: CaseRiskInput[]): CaseRiskResult {
+export function scoreCaseRisk(findings: readonly CaseRiskInput[]): CaseRiskResult {
   const reasons: string[] = [];
   if (findings.length === 0) {
     return {
@@ -246,6 +246,23 @@ export function scoreCaseRisk(findings: CaseRiskInput[]): CaseRiskResult {
     reasons,
     engineVersion: SCORE_ENGINE_VERSION,
   };
+}
+
+const caseRiskByFindings = new WeakMap<readonly CaseRiskInput[], CaseRiskResult>();
+
+/**
+ * Same findings array → same result object.
+ * Zustand reads this through `useSyncExternalStore`, which compares snapshots
+ * with Object.is. A fresh object on every read makes React treat the snapshot
+ * as changed during render and throw minified error #185 (maximum update depth)
+ * as soon as the sandbox status bar subscribes.
+ */
+export function stableScoreCaseRisk(findings: readonly CaseRiskInput[]): CaseRiskResult {
+  const hit = caseRiskByFindings.get(findings);
+  if (hit) return hit;
+  const next = scoreCaseRisk(findings);
+  caseRiskByFindings.set(findings, next);
+  return next;
 }
 
 export function formatRiskLine(risk: CaseRiskResult): string {

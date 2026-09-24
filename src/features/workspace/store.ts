@@ -17,7 +17,7 @@ import { PROMPT_VERSION, WORKSPACE_ID } from "@/domain/types";
 import { FORENSIC_ACTIONS, getAction, type ForensicAction } from "@/lib/ai/actions";
 import { analyzeEvidence, getAiStatus } from "@/lib/ai/analyze";
 import { normalizeAnalysis } from "@/lib/ai/normalize";
-import { scoreAnomaly, scoreCaseRisk, scoreQuestion } from "@/lib/scoring/score";
+import { scoreAnomaly, scoreQuestion, stableScoreCaseRisk } from "@/lib/scoring/score";
 import { buildCaseExport, downloadText, exportToMarkdown } from "@/features/export/export-case";
 import { ingestFile } from "@/features/ingestion/ingest";
 import { skCount } from "@/lib/copy";
@@ -733,5 +733,5 @@ export function selectSelectedEvidence(state: WorkspaceState): EvidenceRecord | 
 }
 
 export function selectCaseRisk(state: WorkspaceState) {
-  return scoreCaseRisk(state.findings);
+  return stableScoreCaseRisk(state.findings);
 }
