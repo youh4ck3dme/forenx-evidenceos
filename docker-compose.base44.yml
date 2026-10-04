@@ -1,0 +1,31 @@
+services:
+  app:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+      - "3000:8080"
+    environment:
+      # Vite >= 6.1 appends this to allowedHosts; the platform sets the value.
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+    env_file:
+      - /run/base44/app.env
+    command:
+      [
+        "sh",
+        "-ec",
+        "npm ci --no-audit --no-fund && exec npm run dev",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:8080/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      start_interval: 5s
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: on-failure
