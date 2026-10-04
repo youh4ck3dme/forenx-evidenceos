@@ -1,0 +1,35 @@
+# Base44 development environment for ForenX EvidenceOS.
+# Runs the Vite dev server from the cloned source with live reload.
+services:
+  web:
+    image: node:22-bookworm
+    working_dir: /app
+    # Bind-mount the cloned source so edits appear via Vite HMR.
+    volumes:
+      - .:/app
+    ports:
+      - "3000:8080"
+    environment:
+      # Let Vite accept the preview's external hostname (platform-managed).
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+      # Avoid downloading Playwright browsers during install (not needed to run).
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+    # Optional external credentials (e.g. MISTRAL_API_KEY) — platform-managed,
+    # last so a dashboard value always wins over any placeholder.
+    env_file:
+      - /run/base44/app.env
+    command:
+      - sh
+      - -ec
+      - |
+        npm ci --no-audit --no-fund --ignore-scripts
+        exec npm run dev
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "node -e \"fetch('http://127.0.0.1:8080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+    restart: on-failure

@@ -1,0 +1,12 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "MISTRAL_API_KEY",
+      "description": "Mistral AI API key (https://console.mistral.ai/api-keys). Optional — without it the AI analysis panel stays 'unavailable', but the app boots and all local forensic features work. Only redacted excerpt text is ever sent to Mistral; original evidence files never leave the browser.",
+      "requiredAtBoot": false
+    }
+  ]
+}
